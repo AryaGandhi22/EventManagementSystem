@@ -1,0 +1,70 @@
+
+/* Global Styles */
+
+:root {
+  font-family: Inter, Arial, sans-serif;
+  color: #172b4d;
+  background: #f5f8fc;
+  font-synthesis: none;
+  text-rendering: optimizeLegibility;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Reset */
+
+* {
+  margin: 0;
+  padding: 0;
+  box-sizing: border-box;
+}
+
+/* HTML */
+
+html {
+  min-width: 320px;
+  min-height: 100%;
+}
+
+/* Body */
+
+body {
+  min-width: 320px;
+  min-height: 100vh;
+  margin: 0;
+  background: #f5f8fc;
+}
+
+/* React Root */
+
+#root {
+  min-width: 320px;
+  min-height: 100vh;
+}
+
+/* Buttons and Inputs */
+
+button,
+input,
+textarea,
+select {
+  font: inherit;
+}
+
+button {
+  cursor: pointer;
+}
+
+/* Links */
+
+a {
+  color: inherit;
+  text-decoration: none;
+}
+
+/* Images */
+
+img {
+  max-width: 100%;
+  display: block;
+}
