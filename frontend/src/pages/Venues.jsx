@@ -23,6 +23,33 @@ function Venues() {
   // Modal state
   const [showVenueModal, setShowVenueModal] = useState(false);
   const [selectedVenue, setSelectedVenue] = useState(null);
+  const [venueToDelete, setVenueToDelete] = useState(null);
+
+  const [showNotifications, setShowNotifications] = useState(false);
+
+const [notifications, setNotifications] = useState([
+  {
+    id: 1,
+    title: "New event registration",
+    message: "A student registered for an event.",
+    time: "10 minutes ago",
+    read: false,
+  },
+  {
+    id: 2,
+    title: "Event updated",
+    message: "College Tech Fest was updated.",
+    time: "1 hour ago",
+    read: false,
+  },
+  {
+    id: 3,
+    title: "Venue available",
+    message: "Auditorium Hall is now available.",
+    time: "2 hours ago",
+    read: true,
+  },
+]);
 
   // Venue form
   const [venueForm, setVenueForm] = useState({
@@ -33,6 +60,29 @@ function Venues() {
     amenities: "",
   });
 
+
+  const unreadCount = notifications.filter(
+  (notification) => !notification.read
+).length;
+
+const markNotificationAsRead = (id) => {
+  setNotifications((current) =>
+    current.map((notification) =>
+      notification.id === id
+        ? { ...notification, read: true }
+        : notification
+    )
+  );
+};
+
+const markAllNotificationsAsRead = () => {
+  setNotifications((current) =>
+    current.map((notification) => ({
+      ...notification,
+      read: true,
+    }))
+  );
+};
   // Load venues from backend
   const load = async () => {
     try {
@@ -151,21 +201,20 @@ function Venues() {
   };
 
   // Delete venue
-  const removeVenue = async (venue) => {
-    const confirmed = window.confirm(`Delete ${venue.name}?`);
+const removeVenue = async () => {
+  if (!venueToDelete) return;
 
-    if (!confirmed) return;
+  try {
+    await deleteVenue(venueToDelete.id);
 
-    try {
-      await deleteVenue(venue.id);
-      setMessage("Venue deleted.");
-      setError("");
+    setMessage("Venue deleted successfully.");
+    setVenueToDelete(null);
 
-      await load();
-    } catch (e) {
-      setError(errorMessage(e));
-    }
-  };
+    await load();
+  } catch (e) {
+    setError(errorMessage(e));
+  }
+};
 
   const totalCapacity = venues.reduce(
     (sum, v) => sum + Number(v.capacity || 0),
@@ -327,7 +376,7 @@ function Venues() {
                   className="icon-button"
                   type="button"
                   title="Delete venue"
-                  onClick={() => removeVenue(venue)}
+                  onClick={() => setVenueToDelete(venue)}
                 >
                   <MoreVertical size={18} />
                 </button>
@@ -725,6 +774,83 @@ function Venues() {
           </div>
         </div>
       )}
+      {/* ============================= */}
+{/* DELETE VENUE MODAL */}
+{/* ============================= */}
+
+{venueToDelete && (
+  <div
+    className="modal-overlay"
+    onClick={() => setVenueToDelete(null)}
+  >
+    <div
+      className="modal-container delete-modal"
+      onClick={(e) => e.stopPropagation()}
+    >
+
+      {/* HEADER */}
+      <div className="modal-header">
+
+        <div>
+          <h2>Delete Venue</h2>
+
+          <p>
+            Are you sure you want to delete this venue?
+          </p>
+        </div>
+
+        <button
+          type="button"
+          className="modal-close"
+          onClick={() => setVenueToDelete(null)}
+        >
+          <X size={22} />
+        </button>
+
+      </div>
+
+      {/* CONTENT */}
+      <div className="delete-modal-content">
+
+        <div className="delete-warning-icon">
+          !
+        </div>
+
+        <div>
+          <h3>{venueToDelete.name}</h3>
+
+          <p>
+            This action will permanently remove this venue
+            from the venue directory.
+          </p>
+        </div>
+
+      </div>
+
+      {/* BUTTONS */}
+      <div className="modal-actions">
+
+        <button
+          type="button"
+          className="btn-secondary"
+          onClick={() => setVenueToDelete(null)}
+        >
+          Cancel
+        </button>
+
+        <button
+          type="button"
+          className="btn-danger"
+          onClick={removeVenue}
+        >
+          Delete Venue
+        </button>
+
+      </div>
+
+    </div>
+  </div>
+)}
 
     </section>
   );

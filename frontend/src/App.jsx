@@ -26,6 +26,53 @@ function App() {
   const [user, setUser] = useState(null);
   const [bootError, setBootError] = useState("");
   const [search, setSearch] = useState("");
+  const [showNotifications, setShowNotifications] = useState(false);
+
+const [notifications, setNotifications] = useState([
+  {
+    id: 1,
+    title: "New event registration",
+    message: "A student registered for an event.",
+    time: "10 minutes ago",
+    read: false,
+  },
+  {
+    id: 2,
+    title: "Event updated",
+    message: "College Tech Fest was updated.",
+    time: "1 hour ago",
+    read: false,
+  },
+  {
+    id: 3,
+    title: "Venue available",
+    message: "Auditorium Hall is now available.",
+    time: "2 hours ago",
+    read: true,
+  },
+]);
+const unreadCount = notifications.filter(
+  (notification) => !notification.read
+).length;
+
+const markNotificationAsRead = (id) => {
+  setNotifications((current) =>
+    current.map((notification) =>
+      notification.id === id
+        ? { ...notification, read: true }
+        : notification
+    )
+  );
+};
+
+const markAllNotificationsAsRead = () => {
+  setNotifications((current) =>
+    current.map((notification) => ({
+      ...notification,
+      read: true,
+    }))
+  );
+};
   const navigate = useNavigate();
   const location = useLocation();
 
