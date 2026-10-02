@@ -97,7 +97,7 @@ function Login() {
       }
 
       if (actualRole === "organizer") {
-        navigate("/");
+        navigate("/organizer");
         return;
       }
 
