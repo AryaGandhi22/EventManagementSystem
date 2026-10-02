@@ -152,7 +152,12 @@ class CheckInView(generics.GenericAPIView):
             )
         registration.checked_in = True
         registration.save(update_fields=["checked_in"])
-        return Response(RegistrationSerializer(registration, context={"request": request}).data)
+        return Response(
+            RegistrationSerializer(
+                registration,
+                context={"request": request}
+            ).data
+        )
 
 
 class FeedbackListCreateView(generics.ListCreateAPIView):
@@ -228,6 +233,7 @@ class UserLoginView(generics.GenericAPIView):
             {
                 "message": "Login successful.",
                 "user": UserSummarySerializer(user).data,
+                "role": serializer.validated_data.get("role", ""),
                 "access": str(refresh.access_token),
                 "refresh": str(refresh),
             },
@@ -258,7 +264,9 @@ def dashboard_view(request):
     now = timezone.now()
     total_events = Event.objects.count()
     upcoming_events = Event.objects.filter(start_date__gte=now).count()
-    total_participants = User.objects.filter(registrations__isnull=False).distinct().count()
+    total_participants = User.objects.filter(
+        registrations__isnull=False
+    ).distinct().count()
     active_venues = Venue.objects.filter(is_available=True).count()
 
     my_registrations = Registration.objects.filter(
@@ -308,12 +316,15 @@ def reports_view(request):
         average_rating=Avg("rating"),
         review_count=Count("id"),
     )
+
     event_rows = []
+
     for event in Event.objects.select_related("venue").all():
         reg_count = event.registrations.filter(status="registered").count()
         attendance = event.registrations.filter(
             status="registered", checked_in=True
         ).count()
+
         event_rows.append(
             {
                 "event_id": str(event.pk),
@@ -322,7 +333,8 @@ def reports_view(request):
                 "registrations": reg_count,
                 "attendance": attendance,
                 "attendance_rate": round(
-                    (attendance / reg_count * 100) if reg_count else 0, 1
+                    (attendance / reg_count * 100) if reg_count else 0,
+                    1
                 ),
             }
         )
@@ -336,9 +348,13 @@ def reports_view(request):
             "cancelled": cancelled,
             "total_attendance": checked_in,
             "attendance_rate": round(
-                (checked_in / registered * 100) if registered else 0, 1
+                (checked_in / registered * 100) if registered else 0,
+                1
             ),
-            "average_rating": round(feedback_stats["average_rating"] or 0, 2),
+            "average_rating": round(
+                feedback_stats["average_rating"] or 0,
+                2
+            ),
             "review_count": feedback_stats["review_count"],
             "event_performance": event_rows,
         }

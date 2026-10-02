@@ -26,6 +26,18 @@ import Venues from "./pages/Venues";
 import Reports from "./pages/Reports";
 import SettingsPage from "./pages/Settings";
 
+function ProtectedRoute({ children }) {
+  const accessToken =
+    localStorage.getItem("college_event_access") ||
+    localStorage.getItem("access_token");
+
+  if (!accessToken) {
+    return <Navigate to="/login" replace />;
+  }
+
+  return children;
+}
+
 function App() {
   const [showNotifications, setShowNotifications] =
     useState(false);
@@ -439,7 +451,11 @@ function App() {
 
                 <Route
                   path="/"
-                  element={<Dashboard />}
+                  element={
+                  <ProtectedRoute>
+                  <Dashboard />
+                  </ProtectedRoute>
+                  }
                 />
 
                 <Route

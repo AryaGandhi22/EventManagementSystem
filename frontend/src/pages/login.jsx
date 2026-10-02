@@ -18,6 +18,8 @@ function Login() {
     password: "",
   });
 
+  const [selectedRole, setSelectedRole] = useState("");
+
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -36,8 +38,13 @@ function Login() {
 
     setError("");
 
+    if (!selectedRole) {
+      setError("Please select your role.");
+      return;
+    }
+
     if (!form.email.trim()) {
-      setError("Please enter your email address.");
+      setError("Please enter your username.");
       return;
     }
 
@@ -50,9 +57,10 @@ function Login() {
       setLoading(true);
 
       const data = await loginUser({
-  username: form.email.trim(),
-  password: form.password,
-});
+        username: form.email.trim(),
+        password: form.password,
+      });
+
       if (data?.access) {
         localStorage.setItem("access_token", data.access);
       }
@@ -68,31 +76,37 @@ function Login() {
         );
       }
 
-      const user = data?.user || data;
+      if (data?.role) {
+        localStorage.setItem("user_role", data.role);
+      }
 
-      const role = String(
-        user?.role ||
-          user?.user_role ||
-          user?.user_type ||
-          ""
-      ).toLowerCase();
+      const actualRole = String(data?.role || "").toLowerCase();
 
-      if (role === "admin" || role === "administrator") {
+      // Check selected role against actual backend role
+      if (selectedRole !== actualRole) {
+        setError(
+          `This account is not registered as ${selectedRole}.`
+        );
+        return;
+      }
+
+      // Role-based navigation
+      if (actualRole === "admin") {
         navigate("/admin");
         return;
       }
 
-      if (role === "organizer" || role === "organiser") {
+      if (actualRole === "organizer") {
         navigate("/");
         return;
       }
 
-      if (role === "student") {
+      if (actualRole === "student") {
         navigate("/student");
         return;
       }
 
-      navigate("/");
+      setError("Your account does not have a valid role.");
     } catch (e) {
       console.error("Login error:", e);
 
@@ -112,7 +126,7 @@ function Login() {
         );
       } else {
         setError(
-          "Unable to login. Please check your email and password."
+          "Unable to login. Please check your username and password."
         );
       }
     } finally {
@@ -138,15 +152,72 @@ function Login() {
           </p>
         </div>
 
+        {/* Role Selection */}
+        <div className="login-role-section">
+          <label>
+            Sign in as
+          </label>
+
+          <div className="login-role-buttons">
+            <button
+              type="button"
+              className={`login-role-button ${
+                selectedRole === "organizer"
+                  ? "active"
+                  : ""
+              }`}
+              onClick={() => {
+                setSelectedRole("organizer");
+                setError("");
+              }}
+              disabled={loading}
+            >
+              Organizer
+            </button>
+
+            <button
+              type="button"
+              className={`login-role-button ${
+                selectedRole === "student"
+                  ? "active"
+                  : ""
+              }`}
+              onClick={() => {
+                setSelectedRole("student");
+                setError("");
+              }}
+              disabled={loading}
+            >
+              Participant
+            </button>
+
+            <button
+              type="button"
+              className={`login-role-button ${
+                selectedRole === "admin"
+                  ? "active"
+                  : ""
+              }`}
+              onClick={() => {
+                setSelectedRole("admin");
+                setError("");
+              }}
+              disabled={loading}
+            >
+              Admin
+            </button>
+          </div>
+        </div>
+
         {/* Form */}
         <form
           onSubmit={handleSubmit}
           className="login-form"
         >
-          {/* Email */}
+          {/* Username */}
           <div className="login-field">
             <label htmlFor="email">
-              Email Address
+              Username
             </label>
 
             <div className="login-input-wrapper">
@@ -155,11 +226,11 @@ function Login() {
               <input
                 id="email"
                 name="email"
-                type="email"
+                type="text"
                 value={form.email}
                 onChange={handleChange}
-                placeholder="Enter your email"
-                autoComplete="email"
+                placeholder="Enter your username"
+                autoComplete="username"
                 disabled={loading}
               />
             </div>

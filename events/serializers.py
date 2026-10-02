@@ -349,7 +349,6 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         )
         return user
 
-
 class UserLoginSerializer(serializers.Serializer):
     username = serializers.CharField()
     password = serializers.CharField(write_only=True)
@@ -363,5 +362,18 @@ class UserLoginSerializer(serializers.Serializer):
             raise serializers.ValidationError("Invalid username or password.")
         if not user.is_active:
             raise serializers.ValidationError("This account is inactive.")
+
+        groups = list(user.groups.values_list("name", flat=True))
+
+        if "Admin" in groups:
+            role = "admin"
+        elif "Organizer" in groups:
+            role = "organizer"
+        elif "Student" in groups:
+            role = "student"
+        else:
+            role = ""
+
         attrs["user"] = user
+        attrs["role"] = role
         return attrs
