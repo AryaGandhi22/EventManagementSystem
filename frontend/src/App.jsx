@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { NavLink, Routes, Route, Navigate } from "react-router-dom";
+import { useLocation, NavLink, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/login";
 
 import {
@@ -26,6 +26,14 @@ import Venues from "./pages/Venues";
 import Reports from "./pages/Reports";
 import SettingsPage from "./pages/Settings";
 
+import AdminDashboard from "./pages/AdminDashboard";
+import AdminUsers from "./pages/AdminUsers";
+import AdminEvents from "./pages/AdminEvents";
+import AdminVenues from "./pages/AdminVenues";
+import AdminRegistrations from "./pages/AdminRegistrations";
+import AdminFeedback from "./pages/AdminFeedback";
+import AdminReports from "./pages/AdminReports";
+
 function ProtectedRoute({ children }) {
   const accessToken =
     localStorage.getItem("college_event_access") ||
@@ -39,6 +47,10 @@ function ProtectedRoute({ children }) {
 }
 
 function App() {
+  const location = useLocation();
+
+  const isAdmin = location.pathname.startsWith("/admin");
+
   const [showNotifications, setShowNotifications] =
     useState(false);
 
@@ -136,73 +148,147 @@ function App() {
               </div>
 
               <nav className="sidebar-nav">
+  <p className="menu-title">
+    {isAdmin ? "ADMIN" : "MAIN MENU"}
+  </p>
 
-                <p className="menu-title">
-                  MAIN MENU
-                </p>
+  {isAdmin ? (
+    <>
+      <NavLink
+        to="/admin"
+        end
+        className="nav-item"
+      >
+        <LayoutDashboard size={19} />
+        <span>Dashboard</span>
+      </NavLink>
 
-                <NavLink
-                  to="/"
-                  end
-                  className="nav-item"
-                >
-                  <LayoutDashboard size={19} />
-                  <span>Dashboard</span>
-                </NavLink>
+      <NavLink
+        to="/admin/users"
+        className="nav-item"
+      >
+        <Users size={19} />
+        <span>Users</span>
+      </NavLink>
 
-                <NavLink
-                  to="/events"
-                  className="nav-item"
-                >
-                  <CalendarDays size={19} />
-                  <span>Events</span>
-                </NavLink>
+      <NavLink
+        to="/admin/events"
+        className="nav-item"
+      >
+        <CalendarDays size={19} />
+        <span>Events</span>
+      </NavLink>
 
-                <NavLink
-                  to="/registrations"
-                  className="nav-item"
-                >
-                  <ClipboardList size={19} />
-                  <span>My Registrations</span>
-                </NavLink>
+      <NavLink
+        to="/admin/venues"
+        className="nav-item"
+      >
+        <MapPin size={19} />
+        <span>Venues</span>
+      </NavLink>
 
-                <NavLink
-                  to="/participants"
-                  className="nav-item"
-                >
-                  <Users size={19} />
-                  <span>Participants</span>
-                </NavLink>
+      <NavLink
+        to="/admin/registrations"
+        className="nav-item"
+      >
+        <ClipboardList size={19} />
+        <span>Registrations</span>
+      </NavLink>
 
-                <NavLink
-                  to="/venues"
-                  className="nav-item"
-                >
-                  <MapPin size={19} />
-                  <span>Venues</span>
-                </NavLink>
+      <NavLink
+        to="/admin/feedback"
+        className="nav-item"
+      >
+        <Users size={19} />
+        <span>Feedback</span>
+      </NavLink>
 
-                <p className="menu-title management-title">
-                  MANAGEMENT
-                </p>
+      <p className="menu-title management-title">
+        ANALYTICS
+      </p>
 
-                <NavLink
-                  to="/reports"
-                  className="nav-item"
-                >
-                  <BarChart3 size={19} />
-                  <span>Reports</span>
-                </NavLink>
+      <NavLink
+        to="/admin/reports"
+        className="nav-item"
+      >
+        <BarChart3 size={19} />
+        <span>Reports</span>
+      </NavLink>
 
-                <NavLink
-                  to="/settings"
-                  className="nav-item"
-                >
-                  <Settings size={19} />
-                  <span>Settings</span>
-                </NavLink>
+      <p className="menu-title management-title">
+        SYSTEM
+      </p>
 
-              </nav>
+      <NavLink to="/admin/settings" className="sidebar-link">
+  <Settings size={18} />
+  <span>Settings</span>
+</NavLink>
+    </>
+  ) : (
+    <>
+      <NavLink
+        to="/"
+        end
+        className="nav-item"
+      >
+        <LayoutDashboard size={19} />
+        <span>Dashboard</span>
+      </NavLink>
+
+      <NavLink
+        to="/events"
+        className="nav-item"
+      >
+        <CalendarDays size={19} />
+        <span>Events</span>
+      </NavLink>
+
+      <NavLink
+        to="/registrations"
+        className="nav-item"
+      >
+        <ClipboardList size={19} />
+        <span>My Registrations</span>
+      </NavLink>
+
+      <NavLink
+        to="/participants"
+        className="nav-item"
+      >
+        <Users size={19} />
+        <span>Participants</span>
+      </NavLink>
+
+      <NavLink
+        to="/venues"
+        className="nav-item"
+      >
+        <MapPin size={19} />
+        <span>Venues</span>
+      </NavLink>
+
+      <p className="menu-title management-title">
+        MANAGEMENT
+      </p>
+
+      <NavLink
+        to="/reports"
+        className="nav-item"
+      >
+        <BarChart3 size={19} />
+        <span>Reports</span>
+      </NavLink>
+
+      <NavLink
+        to="/settings"
+        className="nav-item"
+      >
+        <Settings size={19} />
+        <span>Settings</span>
+      </NavLink>
+    </>
+  )}
+</nav>
 
               <div className="sidebar-bottom">
 
@@ -491,14 +577,74 @@ function App() {
                 {/* Temporary placeholders for future roles */}
 
                 <Route
-                  path="/admin"
-                  element={
-                    <div style={{ padding: "30px" }}>
-                      Admin dashboard coming next.
-                    </div>
-                  }
-                />
+  path="/admin"
+  element={
+    <ProtectedRoute>
+      <AdminDashboard />
+    </ProtectedRoute>
+  }
+/>
 
+<Route
+  path="/admin/users"
+  element={
+    <ProtectedRoute>
+      <AdminUsers />
+    </ProtectedRoute>
+  }
+/>
+<Route
+  path="/admin/events"
+  element={
+    <ProtectedRoute>
+      <AdminEvents />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/admin/venues"
+  element={
+    <ProtectedRoute>
+      <AdminVenues />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/admin/registrations"
+  element={
+    <ProtectedRoute>
+      <AdminRegistrations />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/admin/feedback"
+  element={
+    <ProtectedRoute>
+      <AdminFeedback />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/admin/reports"
+  element={
+    <ProtectedRoute>
+      <AdminReports />
+    </ProtectedRoute>
+  }
+/>
+<Route
+  path="/admin/settings"
+  element={
+    <ProtectedRoute>
+      <SettingsPage />
+    </ProtectedRoute>
+  }
+/>
                 <Route
                   path="/student"
                   element={

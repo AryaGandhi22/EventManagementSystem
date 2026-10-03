@@ -29,7 +29,7 @@ function Settings() {
   };
 
   return (
-    <section className="page-content">
+    <section className="page-content admin-settings-page">
       <div className="page-heading"><div><p className="welcome-text">College Events</p><h1>Settings</h1><p className="page-description">Manage your profile, preferences, notifications, and account settings.</p></div><button className="primary-button" type="button" onClick={save}><Save size={17} /> Save Changes</button></div>
       {message && <p className="page-description">{message}</p>}{error && <p className="page-description">{error}</p>}
 

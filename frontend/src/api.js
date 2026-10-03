@@ -237,3 +237,17 @@ export async function updateMe(payload) {
   localStorage.setItem(USER_KEY, JSON.stringify(user));
   return user;
 }
+export async function loginUser(credentials) {
+  const data = await requestRaw(
+    "/auth/login/",
+    {
+      method: "POST",
+      body: JSON.stringify(credentials),
+    },
+    null
+  );
+
+  saveTokens(data);
+
+  return data;
+}
