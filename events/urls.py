@@ -8,12 +8,15 @@ from rest_framework_simplejwt.views import (
 from .views import (
     AdminEventListView,
     AdminUserListView,
+    AdminVerifyOrganizerView,
     CheckInView,
     EventDetailView,
     EventListCreateView,
     EventAttendeeListView,
-    FeedbackDetailView,
     FeedbackListCreateView,
+    PlatformFeedbackListCreateView,
+    PlatformFeedbackDetailView,
+    AdminVerifyOrganizerView,
     PlatformFeedbackListCreateView,
     PlatformFeedbackDetailView,
     MeView,
@@ -241,6 +244,12 @@ path(
         "notifications/<str:pk>/",
         NotificationDetailView.as_view(),
         name="notification-detail",
+    ),
+
+    path(
+        "admin/verify-organizer/<str:pk>/",
+        AdminVerifyOrganizerView.as_view(),
+        name="admin-verify-organizer",
     ),
 
     # ========================================================

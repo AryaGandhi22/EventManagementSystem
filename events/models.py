@@ -70,6 +70,8 @@ class UserProfile(models.Model):
         related_name="profile",
     )
     phone = models.CharField(max_length=20, blank=True)
+    registration_number = models.CharField(max_length=50, blank=True)
+    is_verified_organizer = models.BooleanField(default=False)
     interests = models.JSONField(default=list, blank=True)
     preferences = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

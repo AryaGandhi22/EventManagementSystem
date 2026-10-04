@@ -7,9 +7,10 @@ import {
   MoreVertical,
   Eye,
   X,
+  CheckCircle,
 } from "lucide-react";
 
-import { getAdminUsers, updateUserStatus } from "../api";
+import { getAdminUsers, updateUserStatus, verifyOrganizer } from "../api";
 
 function AdminUsers() {
   const [users, setUsers] = useState([]);
@@ -91,6 +92,26 @@ function AdminUsers() {
       );
     } catch (e) {
       alert(e?.data?.detail || "Failed to update user status");
+    }
+  };
+
+  const handleToggleVerification = async (user) => {
+    const isActivating = !user.is_verified_organizer;
+    setOpenMenu(null);
+    try {
+      await verifyOrganizer(user.id, isActivating);
+      setUsers((currentUsers) =>
+        currentUsers.map((item) =>
+          item.id === user.id
+            ? { ...item, is_verified_organizer: isActivating }
+            : item
+        )
+      );
+      if (selectedUser && selectedUser.id === user.id) {
+        setSelectedUser({ ...selectedUser, is_verified_organizer: isActivating });
+      }
+    } catch (e) {
+      alert(e?.data?.detail || "Failed to update verification status");
     }
   };
 
@@ -257,6 +278,20 @@ function AdminUsers() {
       </>
     )}
   </button>
+
+  {user.role === "Organizer" && (
+    <button
+      type="button"
+      onClick={() => handleToggleVerification(user)}
+    >
+      <CheckCircle size={16} />
+      <span>
+        {user.is_verified_organizer
+          ? "Revoke Verification"
+          : "Verify Organizer"}
+      </span>
+    </button>
+  )}
 </div>
                     )}
                   </div>
@@ -359,6 +394,30 @@ function AdminUsers() {
                     "Unknown"}
                 </strong>
               </div>
+              
+              {selectedUser.role === "Organizer" && (
+                <>
+                  <div className="admin-detail-item">
+                    <label>Registration #</label>
+                    <strong>
+                      {selectedUser.registration_number ||
+                        "Not provided"}
+                    </strong>
+                  </div>
+                  <div className="admin-detail-item">
+                    <label>Verified Organizer</label>
+                    <strong
+                      className={
+                        selectedUser.is_verified_organizer
+                          ? "admin-detail-active"
+                          : "admin-detail-inactive"
+                      }
+                    >
+                      {selectedUser.is_verified_organizer ? "Yes" : "No"}
+                    </strong>
+                  </div>
+                </>
+              )}
             </div>
 
             {modalType === "edit" && (

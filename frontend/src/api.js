@@ -328,6 +328,13 @@ export async function updateUserStatus(id, isActive) {
   });
 }
 
+export async function verifyOrganizer(id, isVerified) {
+  return api(`/admin/verify-organizer/${id}/`, {
+    method: "PATCH",
+    body: JSON.stringify({ is_verified_organizer: isVerified }),
+  });
+}
+
 export async function getAdminUsers(params = {}) {
   const query = new URLSearchParams();
 

@@ -117,16 +117,17 @@ class EventListCreateView(generics.ListCreateAPIView):
     def perform_create(self, serializer):
         user = self.request.user
 
-        if not (
-            user.is_staff
-            or user.groups.filter(name__iexact="Admin").exists()
-            or user.groups.filter(name__iexact="Organizer").exists()
-        ):
-            from rest_framework.exceptions import PermissionDenied
+        is_admin = user.is_staff or user.groups.filter(name__iexact="Admin").exists()
+        is_organizer = user.groups.filter(name__iexact="Organizer").exists()
 
-            raise PermissionDenied(
-                "Only organizers and admins can create events."
-            )
+        if not (is_admin or is_organizer):
+            from rest_framework.exceptions import PermissionDenied
+            raise PermissionDenied("Only organizers and admins can create events.")
+
+        if is_organizer and not is_admin:
+            if not getattr(user.profile, 'is_verified_organizer', False):
+                from rest_framework.exceptions import PermissionDenied
+                raise PermissionDenied("You must be a verified organizer to create events. Please await admin approval.")
 
         serializer.save()
 class EventDetailView(generics.RetrieveUpdateDestroyAPIView):
@@ -199,6 +200,27 @@ class MeView(generics.RetrieveUpdateAPIView):
 # ============================================================
 # REGISTRATIONS
 # ============================================================
+
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from rest_framework import status
+
+class AdminVerifyOrganizerView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def patch(self, request, pk):
+        user = request.user
+        if not (user.is_staff or user.groups.filter(name__iexact="Admin").exists()):
+            return Response({"error": "Only admins can verify organizers."}, status=status.HTTP_403_FORBIDDEN)
+            
+        try:
+            profile = UserProfile.objects.get(user__pk=pk)
+            is_verified = request.data.get("is_verified_organizer", True)
+            profile.is_verified_organizer = is_verified
+            profile.save()
+            return Response({"message": "Organizer verification status updated.", "is_verified_organizer": is_verified})
+        except UserProfile.DoesNotExist:
+            return Response({"error": "User profile not found."}, status=status.HTTP_404_NOT_FOUND)
 class RegistrationListCreateView(generics.ListCreateAPIView):
     serializer_class = RegistrationSerializer
     permission_classes = [IsAuthenticated]

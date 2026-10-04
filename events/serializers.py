@@ -9,7 +9,7 @@ from django.core.validators import RegexValidator
 
 from rest_framework import serializers
 
-from .models import Event, Feedback, Registration, UserProfile, Venue, Notification
+from .models import Event, Feedback, Registration, UserProfile, Venue, Notification, PlatformFeedback
 
 
 # International phone: optional +, then 7–15 digits (spaces/dashes allowed)
@@ -491,6 +491,8 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "id",
             "user",
             "phone",
+            "registration_number",
+            "is_verified_organizer",
             "interests",
             "preferences",
             "created_at",
@@ -518,6 +520,8 @@ class MeSerializer(serializers.ModelSerializer):
 
     name = serializers.SerializerMethodField()
     phone = serializers.SerializerMethodField()
+    registration_number = serializers.SerializerMethodField()
+    is_verified_organizer = serializers.SerializerMethodField()
     interests = serializers.SerializerMethodField()
     preferences = serializers.SerializerMethodField()
 
@@ -532,6 +536,8 @@ class MeSerializer(serializers.ModelSerializer):
             "last_name",
             "name",
             "phone",
+            "registration_number",
+            "is_verified_organizer",
             "interests",
             "preferences",
         ]
@@ -552,6 +558,12 @@ class MeSerializer(serializers.ModelSerializer):
 
     def get_phone(self, obj):
         return self._profile(obj).phone
+
+    def get_registration_number(self, obj):
+        return self._profile(obj).registration_number
+
+    def get_is_verified_organizer(self, obj):
+        return self._profile(obj).is_verified_organizer
 
     def get_interests(self, obj):
         return self._profile(obj).interests
@@ -618,6 +630,9 @@ class MeSerializer(serializers.ModelSerializer):
 
         if "preferences" in request_data:
             profile.preferences = request_data["preferences"]
+
+        if "registration_number" in request_data:
+            profile.registration_number = request_data["registration_number"]
 
         profile.save()
 
