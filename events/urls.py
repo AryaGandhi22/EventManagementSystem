@@ -1,7 +1,13 @@
 from django.urls import path
-from rest_framework_simplejwt.views import TokenRefreshView, TokenVerifyView
+
+from rest_framework_simplejwt.views import (
+    TokenRefreshView,
+    TokenVerifyView,
+)
 
 from .views import (
+    AdminEventListView,
+    AdminUserListView,
     CheckInView,
     EventDetailView,
     EventListCreateView,
@@ -21,29 +27,164 @@ from .views import (
     reports_view,
 )
 
+
 urlpatterns = [
-    path("auth/register/", UserRegistrationView.as_view(), name="user-register"),
-    path("auth/login/", UserLoginView.as_view(), name="user-login"),
-    path("auth/token/refresh/", TokenRefreshView.as_view(), name="token-refresh"),
-    path("auth/token/verify/", TokenVerifyView.as_view(), name="token-verify"),
-    path("auth/me/", MeView.as_view(), name="auth-me"),
+    # ========================================================
+    # AUTHENTICATION
+    # ========================================================
 
-    path("", EventListCreateView.as_view(), name="event-list-create"),
-    path("health/", health_view, name="health"),
-    path("dashboard/", dashboard_view, name="dashboard"),
-    path("reports/", reports_view, name="reports"),
-    path("participants/", ParticipantListView.as_view(), name="participants"),
+    path(
+        "auth/register/",
+        UserRegistrationView.as_view(),
+        name="user-register",
+    ),
 
-    path("registrations/", RegistrationListCreateView.as_view(), name="registration-list-create"),
-    path("registrations/<str:pk>/", RegistrationDetailView.as_view(), name="registration-detail"),
-    path("registrations/<str:pk>/check-in/", CheckInView.as_view(), name="registration-check-in"),
+    path(
+        "auth/login/",
+        UserLoginView.as_view(),
+        name="user-login",
+    ),
 
-    path("feedback/", FeedbackListCreateView.as_view(), name="feedback-list-create"),
-    path("feedback/<str:pk>/", FeedbackDetailView.as_view(), name="feedback-detail"),
+    path(
+        "auth/token/refresh/",
+        TokenRefreshView.as_view(),
+        name="token-refresh",
+    ),
 
-    path("venues/", VenueListCreateView.as_view(), name="venue-list-create"),
-    path("venues/<str:pk>/", VenueDetailView.as_view(), name="venue-detail"),
+    path(
+        "auth/token/verify/",
+        TokenVerifyView.as_view(),
+        name="token-verify",
+    ),
 
-    path("profile/<str:pk>/", UserProfileDetailView.as_view(), name="profile-detail"),
-    path("<str:pk>/", EventDetailView.as_view(), name="event-detail"),
+    path(
+        "auth/me/",
+        MeView.as_view(),
+        name="auth-me",
+    ),
+
+    # ========================================================
+    # ADMIN
+    # ========================================================
+
+    path(
+        "admin/users/",
+        AdminUserListView.as_view(),
+        name="admin-users",
+    ),
+
+    path(
+        "admin/events/",
+        AdminEventListView.as_view(),
+        name="admin-events",
+    ),
+
+    # ========================================================
+    # DASHBOARD / REPORTS / GENERAL
+    # ========================================================
+
+    path(
+        "health/",
+        health_view,
+        name="health",
+    ),
+
+    path(
+        "dashboard/",
+        dashboard_view,
+        name="dashboard",
+    ),
+
+    path(
+        "reports/",
+        reports_view,
+        name="reports",
+    ),
+
+    path(
+        "participants/",
+        ParticipantListView.as_view(),
+        name="participants",
+    ),
+
+    # ========================================================
+    # REGISTRATIONS
+    # ========================================================
+
+    path(
+        "registrations/",
+        RegistrationListCreateView.as_view(),
+        name="registration-list-create",
+    ),
+
+    path(
+        "registrations/<str:pk>/check-in/",
+        CheckInView.as_view(),
+        name="registration-check-in",
+    ),
+
+    path(
+        "registrations/<str:pk>/",
+        RegistrationDetailView.as_view(),
+        name="registration-detail",
+    ),
+
+    # ========================================================
+    # FEEDBACK
+    # ========================================================
+
+    path(
+        "feedback/",
+        FeedbackListCreateView.as_view(),
+        name="feedback-list-create",
+    ),
+
+    path(
+        "feedback/<str:pk>/",
+        FeedbackDetailView.as_view(),
+        name="feedback-detail",
+    ),
+
+    # ========================================================
+    # VENUES
+    # ========================================================
+
+    path(
+        "venues/",
+        VenueListCreateView.as_view(),
+        name="venue-list-create",
+    ),
+
+    path(
+        "venues/<str:pk>/",
+        VenueDetailView.as_view(),
+        name="venue-detail",
+    ),
+
+    # ========================================================
+    # USER PROFILES
+    # ========================================================
+
+    path(
+        "profile/<str:pk>/",
+        UserProfileDetailView.as_view(),
+        name="profile-detail",
+    ),
+
+    # ========================================================
+    # EVENTS
+    # ========================================================
+
+    # Keep the dynamic event route LAST.
+    path(
+        "",
+        EventListCreateView.as_view(),
+        name="event-list-create",
+    ),
+
+    path(
+        "<str:pk>/",
+        EventDetailView.as_view(),
+        name="event-detail",
+    ),
 ]
