@@ -9,6 +9,7 @@ import {
   Ban,
 } from "lucide-react";
 import { getRegistrations, cancelRegistration } from "../api";
+import { QRCodeSVG } from "qrcode.react";
 
 const StudentMyEvents = () => {
   const [registrations, setRegistrations] = useState([]);
