@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import {
   User,
   Bell,
@@ -7,15 +7,29 @@ import {
   Mail,
   Smartphone,
 } from "lucide-react";
+import { getMe } from "../api";
 
 function StudentSettings() {
   const [profile, setProfile] = useState({
-    name: "Pranjal Hon",
-    email: "student@example.com",
+    name: "",
+    email: "",
     phone: "",
-    department: "Computer Engineering",
+    department: "Computer Engineering", // Not yet in backend model, kept as static for now
     year: "Final Year",
   });
+
+  useEffect(() => {
+    getMe().then((data) => {
+      if (data && data.id) {
+        setProfile((prev) => ({
+          ...prev,
+          name: `${data.first_name} ${data.last_name}`.trim() || data.username,
+          email: data.email || "",
+          phone: data.phone || "",
+        }));
+      }
+    }).catch(() => {});
+  }, []);
 
   const [notifications, setNotifications] = useState({
     eventReminders: true,

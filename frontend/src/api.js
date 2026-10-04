@@ -128,6 +128,7 @@ export async function login(username, password) {
 }
 
 export async function registerUser(payload) {
+  // payload should include: username, email, password, first_name, last_name, phone, role
   return requestRaw(
     "/auth/register/",
     { method: "POST", body: JSON.stringify(payload) },
@@ -135,9 +136,10 @@ export async function registerUser(payload) {
   );
 }
 
+
 export function logout() {
   clearTokens();
-  window.location.reload();
+  window.location.href = "/login?signedout=1";
 }
 
 export async function getEvents(params = {}) {
@@ -165,6 +167,13 @@ export async function updateEvent(id, payload) {
 
 export async function deleteEvent(id) {
   return api(`/${id}/`, { method: "DELETE" });
+}
+
+export async function updateEventStatus(id, newStatus) {
+  return api(`/admin/events/${id}/status/`, {
+    method: "PATCH",
+    body: JSON.stringify({ status: newStatus }),
+  });
 }
 
 export async function getRegistrations(params = {}) {
@@ -263,6 +272,13 @@ export async function loginUser(credentials) {
 
   return data;
 }
+export async function updateUserStatus(id, isActive) {
+  return api(`/admin/users/${id}/status/`, {
+    method: "PATCH",
+    body: JSON.stringify({ is_active: isActive }),
+  });
+}
+
 export async function getAdminUsers(params = {}) {
   const query = new URLSearchParams();
 
@@ -312,3 +328,21 @@ export async function deleteFeedback(id) {
     method: "DELETE",
   });
 }
+
+export async function getNotifications() {
+  const data = await api(`/notifications/`);
+  return data.results || data;
+}
+
+export async function markNotificationRead(id) {
+  return api(`/notifications/${id}/`, {
+    method: "PATCH",
+    body: JSON.stringify({ is_read: true }),
+  });
+}
+
+export async function clearNotifications() {
+  return api(`/notifications/`, {
+    method: "DELETE",
+  });
+}

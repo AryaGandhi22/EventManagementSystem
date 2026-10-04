@@ -5,6 +5,7 @@ import {
   CalendarDays,
   Shield,
   Save,
+  LogOut,
 } from "lucide-react";
 import { getMe, logout, updateMe } from "../api";
 import { errorMessage } from "../utils";
@@ -30,6 +31,7 @@ function Settings() {
 
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   useEffect(() => {
     getMe()
@@ -415,12 +417,41 @@ const save = async () => {
           <button
             className="secondary-button"
             type="button"
-            onClick={logout}
+            onClick={() => setShowLogoutConfirm(true)}
           >
             Log Out
           </button>
         </div>
       </div>
+      {/* ── Logout confirm modal ── */}
+      {showLogoutConfirm && (
+        <div className="logout-confirm-overlay" role="dialog" aria-modal="true" aria-labelledby="logout-modal-title">
+          <div className="logout-confirm-card">
+            <div className="logout-confirm-icon">
+              <LogOut size={28} />
+            </div>
+            <h3 id="logout-modal-title">Sign out?</h3>
+            <p>You'll need to sign in again to access your account.</p>
+            <div className="logout-confirm-actions">
+              <button
+                type="button"
+                className="logout-confirm-cancel"
+                onClick={() => setShowLogoutConfirm(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="logout-confirm-proceed"
+                onClick={logout}
+              >
+                <LogOut size={15} /> Yes, Sign Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </section>
   );
 }

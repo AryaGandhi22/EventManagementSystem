@@ -8,182 +8,75 @@ import {
   Info,
   CheckCircle2,
 } from "lucide-react";
-import { getRegistrations, getEvents } from "../api";
+import { getNotifications, markNotificationRead, clearNotifications } from "../api";
 
 const StudentNotifications = () => {
   const [notifications, setNotifications] = useState([]);
 
-  const READ_NOTIFICATIONS_KEY = "student_read_notifications";
-
-  const getReadNotificationIds = () => {
-  try {
-    return JSON.parse(
-      localStorage.getItem(READ_NOTIFICATIONS_KEY) || "[]"
-    );
-  } catch {
-    return [];
-  }
-};
-
   useEffect(() => {
-  const loadNotifications = async () => {
-    try {
-      const [registrations, events] = await Promise.all([
-        getRegistrations(),
-        getEvents({ upcoming: true }),
-      ]);
+    const loadNotifications = async () => {
+      try {
+        const data = await getNotifications();
+        setNotifications(data);
+      } catch (error) {
+        console.error("Failed to load notifications:", error);
+      }
+    };
 
-      const generatedNotifications = [];
+    loadNotifications();
+  }, []);
 
-      const readNotificationIds = new Set(
-  getReadNotificationIds().map(String)
-);
-
-      registrations.forEach((registration) => {
-        const event = registration.event_details;
-
-        if (!event) return;
-
-        if (registration.status === "registered") {
-          generatedNotifications.push({
-            id: `registration-${registration.id}`,
-            type: "registration",
-            title: "Registration Confirmed",
-            message: `Your registration for ${event.title} has been confirmed.`,
-            time: "Recently",
-            unread: !readNotificationIds.has(
-  `registration-${registration.id}`
-),
-          });
-
-          if (event.start_date) {
-            const eventDate = new Date(event.start_date);
-            const now = new Date();
-
-            if (eventDate > now) {
-              generatedNotifications.push({
-                id: `reminder-${registration.id}`,
-                type: "event",
-                title: "Upcoming Event Reminder",
-                message: `${event.title} is coming up. Make sure you are ready for the event.`,
-                time: eventDate.toLocaleDateString("en-IN", {
-                  day: "2-digit",
-                  month: "short",
-                  year: "numeric",
-                }),
-                unread: !readNotificationIds.has(
-  `reminder-${registration.id}`
-),
-              });
-            }
-          }
-        }
-
-        if (registration.status === "waitlisted") {
-          generatedNotifications.push({
-            id: `waitlist-${registration.id}`,
-            type: "warning",
-            title: "Event Waitlist",
-            message: `You are currently waitlisted for ${event.title}.`,
-            time: "Recently",
-            unread: !readNotificationIds.has(
-  `waitlist-${registration.id}`
-),
-          });
-        }
-      });
-
-      events.forEach((event) => {
-        const alreadyRegistered = registrations.some(
-          (registration) =>
-            String(registration.event) === String(event.id)
-        );
-
-        if (!alreadyRegistered) {
-          generatedNotifications.push({
-            id: `new-event-${event.id}`,
-            type: "info",
-            title: "New Event Available",
-            message: `${event.title} is now available to explore.`,
-            time: event.start_date
-              ? new Date(event.start_date).toLocaleDateString("en-IN", {
-                  day: "2-digit",
-                  month: "short",
-                  year: "numeric",
-                })
-              : "Recently",
-            unread: !readNotificationIds.has(`new-event-${event.id}`),
-          });
-        }
-      });
-
-      setNotifications(generatedNotifications);
-    } catch (error) {
-      console.error("Failed to load notifications:", error);
-    }
-  };
-
-  loadNotifications();
-}, []);
-
-  const [activeFilter, setActiveFilter] =
-    useState("all");
+  const [activeFilter, setActiveFilter] = useState("all");
 
   const unreadCount = notifications.filter(
-    (notification) => notification.unread
+    (notification) => !notification.is_read
   ).length;
 
   const filteredNotifications =
     activeFilter === "unread"
-      ? notifications.filter(
-          (notification) => notification.unread
-        )
+      ? notifications.filter((notification) => !notification.is_read)
       : notifications;
 
-  const markAsRead = (id) => {
-  const readIds = getReadNotificationIds();
-
-  if (!readIds.map(String).includes(String(id))) {
-    readIds.push(id);
-    localStorage.setItem(
-      READ_NOTIFICATIONS_KEY,
-      JSON.stringify(readIds)
-    );
-  }
-
-  setNotifications((old) =>
-    old.map((notification) =>
-      notification.id === id
-        ? {
-            ...notification,
-            unread: false,
-          }
-        : notification
-    )
-  );
-};
-
-  const markAllAsRead = () => {
-  const readIds = getReadNotificationIds();
-
-  notifications.forEach((notification) => {
-    if (!readIds.map(String).includes(String(notification.id))) {
-      readIds.push(notification.id);
+  const markAsRead = async (id) => {
+    try {
+      await markNotificationRead(id);
+      setNotifications((old) =>
+        old.map((notification) =>
+          notification.id === id
+            ? { ...notification, is_read: true }
+            : notification
+        )
+      );
+    } catch (error) {
+      console.error("Failed to mark as read:", error);
     }
-  });
+  };
 
-  localStorage.setItem(
-    READ_NOTIFICATIONS_KEY,
-    JSON.stringify(readIds)
-  );
+  const markAllAsRead = async () => {
+    try {
+      // Typically there would be a mark-all-read API, but we'll mark them locally for now
+      // and maybe do it via clearNotifications or individually if we wanted to be strict.
+      // We will just do it locally so it feels fast, and it might not persist unless we make N calls.
+      const unread = notifications.filter(n => !n.is_read);
+      for (const n of unread) {
+        await markNotificationRead(n.id);
+      }
+      setNotifications((old) =>
+        old.map((notification) => ({ ...notification, is_read: true }))
+      );
+    } catch (error) {
+      console.error("Failed to mark all as read:", error);
+    }
+  };
 
-  setNotifications((old) =>
-    old.map((notification) => ({
-      ...notification,
-      unread: false,
-    }))
-  );
-};
+  const handleClearAll = async () => {
+    try {
+      await clearNotifications();
+      setNotifications([]);
+    } catch (error) {
+      console.error("Failed to clear notifications:", error);
+    }
+  };
 
   const getIcon = (type) => {
     if (type === "event") {
@@ -351,7 +244,7 @@ const StudentNotifications = () => {
               (notification) => (
                 <div
                   className={
-                    notification.unread
+                    !notification.is_read
                       ? "student-notification-item unread"
                       : "student-notification-item"
                   }
@@ -374,7 +267,7 @@ const StudentNotifications = () => {
                         {notification.title}
                       </h3>
 
-                      {notification.unread && (
+                      {(!notification.is_read) && (
                         <span className="student-unread-dot" />
                       )}
 
@@ -385,12 +278,16 @@ const StudentNotifications = () => {
                     </p>
 
                     <span className="student-notification-time">
-                      {notification.time}
+                      {new Date(notification.created_at).toLocaleDateString("en-IN", {
+                        day: "2-digit",
+                        month: "short",
+                        year: "numeric",
+                      })}
                     </span>
 
                   </div>
 
-                  {notification.unread && (
+                  {(!notification.is_read) && (
                     <button
                       type="button"
                       className="student-notification-read"

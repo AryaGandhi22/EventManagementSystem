@@ -13,9 +13,22 @@ class Event(models.Model):
         ("Seminar", "Seminar"),
     ]
 
+    STATUS_CHOICES = [
+        ("draft", "Draft"),
+        ("published", "Published"),
+        ("cancelled", "Cancelled"),
+        ("completed", "Completed"),
+    ]
+
     title = models.CharField(max_length=200)
     description = models.TextField(blank=True)
     category = models.CharField(max_length=20, choices=CATEGORY_CHOICES)
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default="published",
+        db_index=True,
+    )
     organizer = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -65,6 +78,7 @@ class Registration(models.Model):
         ("registered", "Registered"),
         ("waitlisted", "Waitlisted"),
         ("cancelled", "Cancelled"),
+        ("no-show", "No Show"),
     ]
 
     user = models.ForeignKey(
@@ -114,7 +128,7 @@ class Feedback(models.Model):
         related_name="feedbacks",
     )
     rating = models.PositiveIntegerField()
-    comment = models.TextField(blank=True)
+    comment = models.TextField(blank=True, max_length=1000)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -149,3 +163,33 @@ class Venue(models.Model):
 
     def __str__(self):
         return self.name
+
+
+class Notification(models.Model):
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="notifications",
+    )
+    title = models.CharField(max_length=200)
+    message = models.TextField()
+    type = models.CharField(max_length=50, default="system")
+    related_event = models.ForeignKey(
+        Event,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="notifications",
+    )
+    is_read = models.BooleanField(default=False)
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+        indexes = [
+            models.Index(fields=["user", "is_read"], name="notif_user_read_idx"),
+            models.Index(fields=["created_at"], name="notif_created_at_idx"),
+        ]
+
+    def __str__(self):
+        return f"{self.title} - {self.user.username}"

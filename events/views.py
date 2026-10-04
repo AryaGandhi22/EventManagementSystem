@@ -9,7 +9,7 @@ from rest_framework.response import Response
 
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .models import Event, Feedback, Registration, UserProfile, Venue
+from .models import Event, Feedback, Registration, UserProfile, Venue, Notification
 
 from .serializers import (
     EventSerializer,
@@ -21,6 +21,7 @@ from .serializers import (
     UserRegistrationSerializer,
     UserSummarySerializer,
     VenueSerializer,
+    NotificationSerializer,
 )
 
 
@@ -50,6 +51,8 @@ class EventListCreateView(generics.ListCreateAPIView):
         queryset = Event.objects.select_related(
             "organizer",
             "venue",
+        ).prefetch_related(
+            "registrations"
         ).all()
 
         search = self.request.query_params.get("search")
@@ -175,6 +178,8 @@ class RegistrationListCreateView(generics.ListCreateAPIView):
             "event",
             "event__organizer",
             "event__venue",
+        ).prefetch_related(
+            "event__registrations"
         )
 
         is_admin = (
@@ -582,6 +587,55 @@ class AdminUserListView(
         return Response(data)
 
 
+@api_view(["PATCH"])
+@permission_classes([IsAuthenticated])
+def admin_user_status_view(request, pk):
+    """
+    Admin-only endpoint to activate/deactivate a user.
+    PATCH /api/events/admin/users/<pk>/status/
+    Body: { "is_active": boolean }
+    """
+    is_admin = (
+        request.user.is_staff
+        or request.user.groups.filter(name__iexact="Admin").exists()
+    )
+
+    if not is_admin:
+        return Response(
+            {"detail": "Admin access required."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    try:
+        user = User.objects.get(pk=pk)
+    except User.DoesNotExist:
+        return Response(
+            {"detail": "User not found."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    # Don't allow admins to deactivate themselves
+    if user == request.user:
+        return Response(
+            {"detail": "You cannot deactivate your own account."},
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    is_active = request.data.get("is_active")
+    if is_active is not None:
+        user.is_active = bool(is_active)
+        user.save(update_fields=["is_active"])
+
+    return Response(
+        {
+            "id": str(user.pk),
+            "username": user.username,
+            "status": "Active" if user.is_active else "Inactive",
+            "detail": f"User {'activated' if user.is_active else 'deactivated'} successfully.",
+        }
+    )
+
+
 # ============================================================
 # ADMIN - EVENTS
 # ============================================================
@@ -613,6 +667,9 @@ class AdminEventListView(
                 "organizer",
                 "venue",
             )
+            .prefetch_related(
+                "registrations"
+            )
             .all()
         )
 
@@ -641,9 +698,7 @@ class AdminEventListView(
         data = []
 
         for event in events:
-            registrations = event.registrations.filter(
-                status="registered"
-            ).count()
+            registrations = sum(1 for r in event.registrations.all() if r.status == "registered")
 
             if event.end_date < now:
                 event_status = "Completed"
@@ -720,6 +775,7 @@ def dashboard_view(request):
             start_date__gte=now
         )
         .select_related("venue")
+        .prefetch_related("registrations")
         .order_by("start_date")[:5]
     )
 
@@ -799,6 +855,8 @@ def student_dashboard_view(request):
     ).select_related(
         "organizer",
         "venue",
+    ).prefetch_related(
+        "registrations"
     ).distinct().order_by(
         "start_date"
     )[:5]
@@ -810,6 +868,8 @@ def student_dashboard_view(request):
     ).select_related(
         "organizer",
         "venue",
+    ).prefetch_related(
+        "registrations"
     ).order_by(
         "start_date"
     )[:5]
@@ -871,16 +931,13 @@ def reports_view(request):
 
     for event in Event.objects.select_related(
         "venue"
+    ).prefetch_related(
+        "registrations"
     ).all():
 
-        reg_count = event.registrations.filter(
-            status="registered"
-        ).count()
-
-        attendance = event.registrations.filter(
-            status="registered",
-            checked_in=True,
-        ).count()
+        registrations = event.registrations.all()
+        reg_count = sum(1 for r in registrations if r.status == "registered")
+        attendance = sum(1 for r in registrations if r.status == "registered" and r.checked_in)
 
         event_rows.append(
             {
@@ -988,6 +1045,64 @@ def student_reports_view(request):
 
 
 # ============================================================
+# ADMIN — EVENT STATUS CHANGE
+# ============================================================
+
+@api_view(["PATCH"])
+@permission_classes([IsAuthenticated])
+def admin_event_status_view(request, pk):
+    """
+    Admin-only endpoint to change an event's status.
+    PATCH /api/events/admin/events/<pk>/status/
+    Body: { "status": "published" | "cancelled" | "draft" | "completed" }
+    """
+    is_admin = (
+        request.user.is_staff
+        or request.user.groups.filter(name__iexact="Admin").exists()
+    )
+
+    if not is_admin:
+        return Response(
+            {"detail": "Admin access required."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    try:
+        event = Event.objects.get(pk=pk)
+    except Event.DoesNotExist:
+        return Response(
+            {"detail": "Event not found."},
+            status=status.HTTP_404_NOT_FOUND,
+        )
+
+    new_status = request.data.get("status", "").lower()
+    valid_statuses = [s[0] for s in Event.STATUS_CHOICES]
+
+    if new_status not in valid_statuses:
+        return Response(
+            {
+                "detail": (
+                    f"Invalid status '{new_status}'. "
+                    f"Choose from: {', '.join(valid_statuses)}."
+                )
+            },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    event.status = new_status
+    event.save(update_fields=["status"])
+
+    return Response(
+        {
+            "id": str(event.pk),
+            "title": event.title,
+            "status": event.status,
+            "detail": f"Event status updated to '{new_status}'.",
+        }
+    )
+
+
+# ============================================================
 # HEALTH CHECK
 # ============================================================
 
@@ -1001,3 +1116,36 @@ def health_view(request):
             "database": "mongodb",
         }
     )
+
+
+# ============================================================
+# NOTIFICATIONS
+# ============================================================
+
+class NotificationListView(generics.ListAPIView):
+    serializer_class = NotificationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Notification.objects.filter(
+            user=self.request.user
+        )
+
+    def delete(self, request, *args, **kwargs):
+        """Clear all notifications for the user."""
+        Notification.objects.filter(user=request.user).delete()
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+
+class NotificationDetailView(generics.UpdateAPIView, generics.DestroyAPIView):
+    serializer_class = NotificationSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return Notification.objects.filter(
+            user=self.request.user
+        )
+
+    def perform_update(self, serializer):
+        # We only support marking as read
+        serializer.save(is_read=True)

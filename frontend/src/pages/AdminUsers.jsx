@@ -9,7 +9,7 @@ import {
   X,
 } from "lucide-react";
 
-import { getAdminUsers } from "../api";
+import { getAdminUsers, updateUserStatus } from "../api";
 
 function AdminUsers() {
   const [users, setUsers] = useState([]);
@@ -75,24 +75,23 @@ function AdminUsers() {
     setOpenMenu(null);
   };
 
-  const handleToggleStatus = (user) => {
-    const newStatus =
-      user.status === "Active"
-        ? "Inactive"
-        : "Active";
-
-    setUsers((currentUsers) =>
-      currentUsers.map((item) =>
-        item.id === user.id
-          ? {
-              ...item,
-              status: newStatus,
-            }
-          : item
-      )
-    );
-
+  const handleToggleStatus = async (user) => {
+    const isActivating = user.status === "Inactive";
+    const newStatusText = isActivating ? "Active" : "Inactive";
+    
     setOpenMenu(null);
+    try {
+      await updateUserStatus(user.id, isActivating);
+      setUsers((currentUsers) =>
+        currentUsers.map((item) =>
+          item.id === user.id
+            ? { ...item, status: newStatusText }
+            : item
+        )
+      );
+    } catch (e) {
+      alert(e?.data?.detail || "Failed to update user status");
+    }
   };
 
   const closeModal = () => {

@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useLocation, NavLink, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/login";
+import { logout, getMe, getNotifications, markNotificationRead } from "./api";
 
 import {
   LayoutDashboard,
@@ -14,6 +15,7 @@ import {
   Search,
   Check,
   X,
+  LogOut,
 } from "lucide-react";
 
 import "./App.css";
@@ -62,60 +64,73 @@ function App() {
   const isAdmin = location.pathname.startsWith("/admin");
   const isStudent = location.pathname.startsWith("/student");
 
-  const [showNotifications, setShowNotifications] =
-    useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
 
-  const [notifications, setNotifications] = useState([
-    {
-      id: 1,
-      title: "New event registration",
-      message:
-        "A participant registered for Tech Fest 2026.",
-      time: "10 minutes ago",
-      unread: true,
-    },
-    {
-      id: 2,
-      title: "Event reminder",
-      message:
-        "Tech Fest 2026 is coming up soon.",
-      time: "1 hour ago",
-      unread: true,
-    },
-    {
-      id: 3,
-      title: "Registration update",
-      message:
-        "A participant registration was cancelled.",
-      time: "3 hours ago",
-      unread: false,
-    },
-  ]);
+  useEffect(() => {
+    // Only try to fetch the profile if they aren't on the login page
+    if (location.pathname !== "/login") {
+      getMe()
+        .then((data) => {
+          if (data && data.id) {
+            setCurrentUser(data);
+          }
+        })
+        .catch(() => {
+          // Ignore - ProtectedRoute will handle redirect if token is completely invalid
+        });
+    }
+  }, [location.pathname]);
+
+  const [showNotifications, setShowNotifications] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
+
+  const [notifications, setNotifications] = useState([]);
+
+  useEffect(() => {
+    if (currentUser) {
+      getNotifications()
+        .then((data) => setNotifications(data))
+        .catch((err) => console.error("Failed to load notifications", err));
+    }
+  }, [currentUser]);
 
   const unreadCount = notifications.filter(
-    (notification) => notification.unread
+    (notification) => !notification.is_read
   ).length;
 
-  const markAllAsRead = () => {
-    setNotifications((old) =>
-      old.map((notification) => ({
-        ...notification,
-        unread: false,
-      }))
-    );
+  const markAllAsRead = async () => {
+    try {
+      const unread = notifications.filter((n) => !n.is_read);
+      for (const n of unread) {
+        await markNotificationRead(n.id);
+      }
+      setNotifications((old) =>
+        old.map((notification) => ({
+          ...notification,
+          is_read: true,
+        }))
+      );
+    } catch (error) {
+      console.error(error);
+    }
   };
 
-  const markAsRead = (id) => {
-    setNotifications((old) =>
-      old.map((notification) =>
-        notification.id === id
-          ? {
-              ...notification,
-              unread: false,
-            }
-          : notification
-      )
-    );
+  const markAsRead = async (id) => {
+    try {
+      await markNotificationRead(id);
+      setNotifications((old) =>
+        old.map((notification) =>
+          notification.id === id
+            ? {
+                ...notification,
+                is_read: true,
+              }
+            : notification
+        )
+      );
+    } catch (error) {
+      console.error(error);
+    }
   };
 
   return (
@@ -380,27 +395,30 @@ function App() {
 </nav>
 
               <div className="sidebar-bottom">
-
-                <div className="profile-mini">
-
-                  <div className="avatar">
-                    P
+                <div className="sidebar-user-row">
+                  <div className="profile-mini">
+                    <div className="avatar">
+                      {isAdmin ? "A" : isStudent ? "S" : "O"}
+                    </div>
+                    <div className="profile-info">
+                      <strong>
+                        {isAdmin ? "Admin" : isStudent ? "Student" : "Organizer"}
+                      </strong>
+                      <span>
+                        {isAdmin ? "Administrator" : isStudent ? "Participant" : "Organizer"}
+                      </span>
+                    </div>
                   </div>
-
-                  <div className="profile-info">
-
-                    <strong>
-                      Pranjal Hon
-                    </strong>
-
-                    <span>
-                      Student
-                    </span>
-
-                  </div>
-
+                  <button
+                    type="button"
+                    className="sidebar-signout-btn"
+                    onClick={() => setShowLogoutConfirm(true)}
+                    title="Sign Out"
+                    aria-label="Sign Out"
+                  >
+                    <LogOut size={17} />
+                  </button>
                 </div>
-
               </div>
 
             </aside>
@@ -516,7 +534,7 @@ function App() {
                                     notification.id
                                   }
                                   className={`notification-item ${
-                                    notification.unread
+                                    !notification.is_read
                                       ? "unread"
                                       : ""
                                   }`}
@@ -548,14 +566,12 @@ function App() {
                                     </p>
 
                                     <span>
-                                      {
-                                        notification.time
-                                      }
+                                      {new Date(notification.created_at).toLocaleTimeString("en-US", { hour: "2-digit", minute: "2-digit" })}
                                     </span>
 
                                   </div>
 
-                                  {notification.unread && (
+                                  {!notification.is_read && (
                                     <span className="unread-indicator" />
                                   )}
 
@@ -595,23 +611,17 @@ function App() {
                   {/* Profile */}
 
                   <div className="topbar-profile">
-
                     <div className="avatar">
-                      P
+                      {currentUser?.first_name ? currentUser.first_name[0].toUpperCase() : (isAdmin ? "A" : isStudent ? "S" : "O")}
                     </div>
-
                     <div>
-
                       <strong>
-                        Pranjal Hon
+                        {currentUser?.first_name ? `${currentUser.first_name} ${currentUser.last_name}` : "Loading..."}
                       </strong>
-
                       <span>
-                        Student
+                        {isAdmin ? "Administrator" : isStudent ? "Student" : "Organizer"}
                       </span>
-
                     </div>
-
                   </div>
 
                 </div>
@@ -831,6 +841,43 @@ function App() {
               </Routes>
 
             </main>
+
+            {/* ── Global Sign-Out Confirm Modal ── */}
+            {showLogoutConfirm && (
+              <div
+                className="logout-confirm-overlay"
+                role="dialog"
+                aria-modal="true"
+                aria-labelledby="global-logout-title"
+                onClick={(e) => {
+                  if (e.target === e.currentTarget) setShowLogoutConfirm(false);
+                }}
+              >
+                <div className="logout-confirm-card">
+                  <div className="logout-confirm-icon">
+                    <LogOut size={28} />
+                  </div>
+                  <h3 id="global-logout-title">Sign out?</h3>
+                  <p>You'll be returned to the login screen.</p>
+                  <div className="logout-confirm-actions">
+                    <button
+                      type="button"
+                      className="logout-confirm-cancel"
+                      onClick={() => setShowLogoutConfirm(false)}
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="button"
+                      className="logout-confirm-proceed"
+                      onClick={logout}
+                    >
+                      <LogOut size={15} /> Yes, Sign Out
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
 
           </div>
         }

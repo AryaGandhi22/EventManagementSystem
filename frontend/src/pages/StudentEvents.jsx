@@ -146,6 +146,9 @@ const [registrationError, setRegistrationError] =
 
     const message =
       err?.data?.detail ||
+      err?.data?.event_id?.[0] ||
+      err?.data?.non_field_errors?.[0] ||
+      (err?.data && typeof err.data === "object" ? Object.values(err.data)[0]?.[0] : null) ||
       err?.message ||
       "Unable to register for this event.";
 
@@ -445,16 +448,34 @@ const [registrationError, setRegistrationError] =
                 Close
               </button>
 
-              <button
-  type="button"
-  className="primary-button"
-  onClick={handleRegister}
-  disabled={registering}
->
-  {registering
-    ? "Registering..."
-    : "Register for Event"}
-</button>
+              {selectedEvent.registration_status === "registered" ? (
+                <button
+                  type="button"
+                  className="primary-button"
+                  disabled
+                >
+                  Already Registered
+                </button>
+              ) : selectedEvent.registration_status === "waitlisted" ? (
+                <button
+                  type="button"
+                  className="primary-button"
+                  disabled
+                >
+                  Waitlisted
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  className="primary-button"
+                  onClick={handleRegister}
+                  disabled={registering}
+                >
+                  {registering
+                    ? "Registering..."
+                    : "Register for Event"}
+                </button>
+              )}
 
             </div>
 

@@ -11,7 +11,7 @@ import {
   X,
 } from "lucide-react";
 
-import { api } from "../api";
+import { api, updateEventStatus } from "../api";
 
 function AdminEvents() {
   const [events, setEvents] = useState([]);
@@ -131,6 +131,20 @@ function AdminEvents() {
   const handleViewDetails = (event) => {
     setSelectedEvent(event);
     setOpenMenu(null);
+  };
+
+  const handleStatusChange = async (eventId, newStatus) => {
+    setOpenMenu(null);
+    try {
+      await updateEventStatus(eventId, newStatus);
+      setEvents((prev) =>
+        prev.map((ev) =>
+          ev.id === eventId ? { ...ev, status: newStatus } : ev
+        )
+      );
+    } catch (e) {
+      alert(e?.data?.detail || "Failed to update status");
+    }
   };
 
   const closeModal = () => {
@@ -271,6 +285,39 @@ function AdminEvents() {
                           <Eye size={16} />
                           <span>View Details</span>
                         </button>
+                        {event.status !== "published" && event.status !== "completed" && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleStatusChange(event.id, "published")
+                            }
+                          >
+                            <CheckCircle2 size={16} />
+                            <span>Publish</span>
+                          </button>
+                        )}
+                        {event.status !== "completed" && event.status !== "cancelled" && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleStatusChange(event.id, "completed")
+                            }
+                          >
+                            <CheckCircle2 size={16} />
+                            <span>Mark Completed</span>
+                          </button>
+                        )}
+                        {event.status !== "cancelled" && event.status !== "completed" && (
+                          <button
+                            type="button"
+                            onClick={() =>
+                              handleStatusChange(event.id, "cancelled")
+                            }
+                          >
+                            <X size={16} />
+                            <span>Cancel Event</span>
+                          </button>
+                        )}
                       </div>
                     )}
                   </div>

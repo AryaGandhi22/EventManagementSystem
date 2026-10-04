@@ -28,6 +28,7 @@ function AdminSettings() {
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
   const [saving, setSaving] = useState(false);
+  const [showLogoutConfirm, setShowLogoutConfirm] = useState(false);
 
   useEffect(() => {
     loadAdminProfile();
@@ -119,6 +120,10 @@ function AdminSettings() {
   };
 
   const handleLogout = () => {
+    setShowLogoutConfirm(true);
+  };
+
+  const confirmLogout = () => {
     logout();
   };
 
@@ -433,6 +438,35 @@ function AdminSettings() {
         </div>
 
       </div>
+
+      {/* ── Logout confirmation modal ── */}
+      {showLogoutConfirm && (
+        <div className="logout-confirm-overlay" role="dialog" aria-modal="true" aria-labelledby="logout-title">
+          <div className="logout-confirm-card">
+            <div className="logout-confirm-icon">
+              <LogOut size={28} />
+            </div>
+            <h3 id="logout-title">Sign out?</h3>
+            <p>You'll need to sign in again to access your account.</p>
+            <div className="logout-confirm-actions">
+              <button
+                type="button"
+                className="logout-confirm-cancel"
+                onClick={() => setShowLogoutConfirm(false)}
+              >
+                Cancel
+              </button>
+              <button
+                type="button"
+                className="logout-confirm-proceed"
+                onClick={confirmLogout}
+              >
+                <LogOut size={15} /> Yes, Sign Out
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
     </section>
   );

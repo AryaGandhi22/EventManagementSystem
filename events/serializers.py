@@ -1,12 +1,38 @@
 from bson import ObjectId
 
+from django.contrib.auth.models import Group
+
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
 from django.utils import timezone
+from django.core.validators import RegexValidator
 
 from rest_framework import serializers
 
-from .models import Event, Feedback, Registration, UserProfile, Venue
+from .models import Event, Feedback, Registration, UserProfile, Venue, Notification
+
+
+# International phone: optional +, then 7–15 digits (spaces/dashes allowed)
+_phone_validator = RegexValidator(
+    regex=r'^\+?[0-9][\d\s\-]{6,17}$',
+    message=(
+        "Enter a valid phone number (7–15 digits, "
+        "optional leading +). Example: +91 98765 43210"
+    ),
+)
+
+
+def validate_phone_number(value):
+    """Strip whitespace/dashes, check 7–15 digit length."""
+    if not value:
+        return value
+    digits = ''.join(c for c in value if c.isdigit())
+    if len(digits) < 7 or len(digits) > 15:
+        raise serializers.ValidationError(
+            "Phone number must contain 7 to 15 digits."
+        )
+    _phone_validator(value)
+    return value
 
 
 def stringify_object_ids(value):
@@ -30,6 +56,22 @@ def stringify_object_ids(value):
         ]
 
     return value
+
+
+class SimpleUserSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(source="pk", read_only=True)
+    name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = ["id", "username", "name", "email"]
+
+    def get_name(self, obj):
+        return obj.get_full_name() or obj.username
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        return stringify_object_ids(data)
 
 
 class UserSummarySerializer(serializers.ModelSerializer):
@@ -126,7 +168,7 @@ class VenueSerializer(serializers.ModelSerializer):
 class EventSerializer(serializers.ModelSerializer):
     id = serializers.CharField(read_only=True)
 
-    organizer = UserSummarySerializer(read_only=True)
+    organizer = SimpleUserSerializer(read_only=True)
 
     organizer_id = serializers.CharField(
         source="organizer.pk",
@@ -154,6 +196,7 @@ class EventSerializer(serializers.ModelSerializer):
             "title",
             "description",
             "category",
+            "status",
             "organizer",
             "organizer_id",
             "venue",
@@ -179,6 +222,9 @@ class EventSerializer(serializers.ModelSerializer):
         ]
 
     def validate(self, attrs):
+        from django.utils import timezone
+        from datetime import timedelta
+
         start = attrs.get(
             "start_date",
             getattr(self.instance, "start_date", None),
@@ -194,11 +240,29 @@ class EventSerializer(serializers.ModelSerializer):
             getattr(self.instance, "capacity", None),
         )
 
+        # Future dates only (only enforce on creation, not updates)
+        if not self.instance and start and start <= timezone.now():
+            raise serializers.ValidationError(
+                {
+                    "start_date":
+                    "Event start date must be in the future."
+                }
+            )
+
         if start and end and end <= start:
             raise serializers.ValidationError(
                 {
                     "end_date":
                     "End date/time must be after start date/time."
+                }
+            )
+
+        # Minimum 1-hour duration
+        if start and end and (end - start) < timedelta(hours=1):
+            raise serializers.ValidationError(
+                {
+                    "end_date":
+                    "Event duration must be at least 1 hour."
                 }
             )
 
@@ -251,9 +315,11 @@ class EventSerializer(serializers.ModelSerializer):
         return super().create(validated_data)
 
     def get_registration_count(self, obj):
-        return obj.registrations.filter(
-            status__in=["registered"]
-        ).count()
+        # Use Python to count so prefetch_related is respected
+        return sum(
+            1 for r in obj.registrations.all()
+            if r.status in ["registered"]
+        )
 
     def get_available_seats(self, obj):
         return max(
@@ -267,11 +333,12 @@ class EventSerializer(serializers.ModelSerializer):
         if not request or not request.user.is_authenticated:
             return None
 
-        registration = obj.registrations.filter(
-            user=request.user
-        ).first()
+        # Iterate in Python to avoid N+1 query if prefetch_related is used
+        for r in obj.registrations.all():
+            if r.user_id == request.user.id:
+                return r.status
 
-        return registration.status if registration else None
+        return None
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -281,7 +348,7 @@ class EventSerializer(serializers.ModelSerializer):
 class RegistrationSerializer(serializers.ModelSerializer):
     id = serializers.CharField(read_only=True)
 
-    user = UserSummarySerializer(read_only=True)
+    user = SimpleUserSerializer(read_only=True)
 
     user_id = serializers.CharField(
         source="user.pk",
@@ -337,7 +404,7 @@ class RegistrationSerializer(serializers.ModelSerializer):
             event=event,
         ).first()
 
-        if existing:
+        if existing and existing.status != "cancelled":
             raise serializers.ValidationError(
                 "You are already registered for this event."
             )
@@ -364,11 +431,30 @@ class RegistrationSerializer(serializers.ModelSerializer):
             else "waitlisted"
         )
 
-        return Registration.objects.create(
+        registration = Registration.objects.filter(
             user=request.user,
             event=event,
-            status=status_value,
+        ).first()
+
+        if registration:
+            registration.status = status_value
+            registration.save()
+        else:
+            registration = Registration.objects.create(
+                user=request.user,
+                event=event,
+                status=status_value,
+            )
+
+        Notification.objects.create(
+            user=request.user,
+            title="Registration Confirmed" if status_value == "registered" else "Event Waitlist",
+            message=f"Your registration for {event.title} has been confirmed." if status_value == "registered" else f"You are currently waitlisted for {event.title}.",
+            type="registration" if status_value == "registered" else "warning",
+            related_event=event,
         )
+
+        return registration
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -407,6 +493,9 @@ class UserProfileSerializer(serializers.ModelSerializer):
             "user",
             "created_at",
         ]
+
+    def validate_phone(self, value):
+        return validate_phone_number(value)
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
@@ -572,7 +661,13 @@ class FeedbackSerializer(serializers.ModelSerializer):
             raise serializers.ValidationError(
                 "Rating must be between 1 and 5."
             )
+        return value
 
+    def validate_comment(self, value):
+        if len(value) > 1000:
+            raise serializers.ValidationError(
+                "Feedback comment cannot exceed 1000 characters."
+            )
         return value
 
     def validate_event(self, event):
@@ -654,6 +749,14 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
         required=False,
     )
 
+    # "student" or "organizer" — admin accounts cannot be self-registered
+    role = serializers.ChoiceField(
+        choices=["student", "organizer"],
+        required=False,
+        default="student",
+        write_only=True,
+    )
+
     class Meta:
         model = User
 
@@ -665,6 +768,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             "last_name",
             "phone",
             "interests",
+            "role",
         ]
 
     def validate_username(self, value):
@@ -687,20 +791,14 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
 
         return value
 
+    def validate_phone(self, value):
+        return validate_phone_number(value)
+
     def create(self, validated_data):
-        phone = validated_data.pop(
-            "phone",
-            "",
-        )
-
-        interests = validated_data.pop(
-            "interests",
-            [],
-        )
-
-        password = validated_data.pop(
-            "password"
-        )
+        phone = validated_data.pop("phone", "")
+        interests = validated_data.pop("interests", [])
+        password = validated_data.pop("password")
+        role = validated_data.pop("role", "student")
 
         user = User.objects.create_user(
             password=password,
@@ -712,6 +810,11 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             phone=phone,
             interests=interests,
         )
+
+        # Auto-assign to the matching group so login works immediately
+        group_name = role.capitalize()   # "Student" or "Organizer"
+        group, _ = Group.objects.get_or_create(name=group_name)
+        user.groups.add(group)
 
         return user
 
@@ -771,3 +874,31 @@ class StudentReportSerializer(serializers.Serializer):
     cancelled = serializers.IntegerField()
     checked_in = serializers.IntegerField()
     feedback_given = serializers.IntegerField()
+
+
+class NotificationSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(source="pk", read_only=True)
+    
+    class Meta:
+        model = Notification
+        fields = [
+            "id",
+            "title",
+            "message",
+            "type",
+            "related_event",
+            "is_read",
+            "created_at",
+        ]
+        read_only_fields = [
+            "id",
+            "title",
+            "message",
+            "type",
+            "related_event",
+            "created_at",
+        ]
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        return stringify_object_ids(data)

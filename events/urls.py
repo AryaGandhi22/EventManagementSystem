@@ -22,11 +22,15 @@ from .views import (
     UserRegistrationView,
     VenueDetailView,
     VenueListCreateView,
+    admin_event_status_view,
+    admin_user_status_view,
     dashboard_view,
     health_view,
     reports_view,
     student_dashboard_view,
     student_reports_view,
+    NotificationListView,
+    NotificationDetailView,
 )
 
 
@@ -76,9 +80,21 @@ urlpatterns = [
     ),
 
     path(
+        "admin/users/<str:pk>/status/",
+        admin_user_status_view,
+        name="admin-user-status",
+    ),
+
+    path(
         "admin/events/",
         AdminEventListView.as_view(),
         name="admin-events",
+    ),
+
+    path(
+        "admin/events/<str:pk>/status/",
+        admin_event_status_view,
+        name="admin-event-status",
     ),
 
     # ========================================================
@@ -187,6 +203,22 @@ path(
         "profile/<str:pk>/",
         UserProfileDetailView.as_view(),
         name="profile-detail",
+    ),
+
+    # ========================================================
+    # NOTIFICATIONS
+    # ========================================================
+
+    path(
+        "notifications/",
+        NotificationListView.as_view(),
+        name="notification-list",
+    ),
+
+    path(
+        "notifications/<str:pk>/",
+        NotificationDetailView.as_view(),
+        name="notification-detail",
     ),
 
     # ========================================================

@@ -459,20 +459,34 @@ const StudentMyEvents = () => {
 
                   </div>
 
-                  <div className="student-my-event-actions">
+                  <div className="student-my-event-actions" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
 
                     {status === "registered" && (
-                      <button
-                        type="button"
-                        className="btn-danger-outline"
-                        onClick={() =>
-                          setCancelTarget(
-                            registration
-                          )
-                        }
-                      >
-                        Cancel Registration
-                      </button>
+                      <>
+                        <div className="student-qr-code-section" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                          <QRCodeSVG 
+                            value={registration.id} 
+                            size={70} 
+                            level={"M"}
+                            includeMargin={false}
+                          />
+                          <div style={{ display: 'flex', flexDirection: 'column' }}>
+                            <span style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text)' }}>Check-in Pass</span>
+                            <span style={{ fontSize: '0.75rem', color: 'var(--text-light)' }}>Show this at the entrance</span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          className="btn-danger-outline"
+                          onClick={() =>
+                            setCancelTarget(
+                              registration
+                            )
+                          }
+                        >
+                          Cancel Registration
+                        </button>
+                      </>
                     )}
 
                     {status === "waitlisted" && (
