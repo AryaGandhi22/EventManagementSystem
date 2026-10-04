@@ -36,7 +36,9 @@ export function getStoredUser() {
 async function requestRaw(path, options = {}, token = getAccessToken()) {
   const headers = new Headers(options.headers || {});
   if (!headers.has("Content-Type") && options.body !== undefined) {
-    headers.set("Content-Type", "application/json");
+    if (!(options.body instanceof FormData)) {
+      headers.set("Content-Type", "application/json");
+    }
   }
   if (token) headers.set("Authorization", `Bearer ${token}`);
 
@@ -158,11 +160,19 @@ export async function getEvent(id) {
 }
 
 export async function createEvent(payload) {
-  return api("/", { method: "POST", body: JSON.stringify(payload) });
+  let body = payload;
+  if (!(payload instanceof FormData)) {
+    body = JSON.stringify(payload);
+  }
+  return api("/", { method: "POST", body });
 }
 
 export async function updateEvent(id, payload) {
-  return api(`/${id}/`, { method: "PATCH", body: JSON.stringify(payload) });
+  let body = payload;
+  if (!(payload instanceof FormData)) {
+    body = JSON.stringify(payload);
+  }
+  return api(`/${id}/`, { method: "PATCH", body });
 }
 
 export async function deleteEvent(id) {
@@ -225,11 +235,19 @@ export async function getVenues(params = {}) {
 }
 
 export async function createVenue(payload) {
-  return api("/venues/", { method: "POST", body: JSON.stringify(payload) });
+  let body = payload;
+  if (!(payload instanceof FormData)) {
+    body = JSON.stringify(payload);
+  }
+  return api("/venues/", { method: "POST", body });
 }
 
 export async function updateVenue(id, payload) {
-  return api(`/venues/${id}/`, { method: "PATCH", body: JSON.stringify(payload) });
+  let body = payload;
+  if (!(payload instanceof FormData)) {
+    body = JSON.stringify(payload);
+  }
+  return api(`/venues/${id}/`, { method: "PATCH", body });
 }
 
 export async function deleteVenue(id) {

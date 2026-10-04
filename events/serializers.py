@@ -204,6 +204,7 @@ class EventSerializer(serializers.ModelSerializer):
             "start_date",
             "end_date",
             "capacity",
+            "image",
             "registration_count",
             "available_seats",
             "registration_status",

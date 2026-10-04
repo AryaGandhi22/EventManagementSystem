@@ -616,7 +616,7 @@ function App() {
                     </div>
                     <div>
                       <strong>
-                        {currentUser?.first_name ? `${currentUser.first_name} ${currentUser.last_name}` : "Loading..."}
+                        {isAdmin ? "Admin" : isStudent ? "Student" : "Organizer"}
                       </strong>
                       <span>
                         {isAdmin ? "Administrator" : isStudent ? "Student" : "Organizer"}

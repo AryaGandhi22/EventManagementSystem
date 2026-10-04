@@ -128,3 +128,6 @@ SIMPLE_JWT = {
 }
 
 CSRF_TRUSTED_ORIGINS = CORS_ALLOWED_ORIGINS
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')

@@ -41,6 +41,11 @@ class Event(models.Model):
         blank=True,
         related_name="events",
     )
+    image = models.ImageField(
+        upload_to="event_posters/",
+        blank=True,
+        null=True,
+    )
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()
     capacity = models.PositiveIntegerField()
@@ -150,7 +155,11 @@ class Venue(models.Model):
     location = models.CharField(max_length=300)
     capacity = models.PositiveIntegerField()
     amenities = models.JSONField(default=list, blank=True)
-    image = models.URLField(blank=True)
+    image = models.ImageField(
+        upload_to="venue_images/",
+        blank=True,
+        null=True,
+    )
     is_available = models.BooleanField(default=True)
     created_at = models.DateTimeField(auto_now_add=True)
 

@@ -122,14 +122,20 @@ function Venues() {
         .map((item) => item.trim())
         .filter(Boolean);
 
-      await createVenue({
-        name: venueForm.name.trim(),
-        location: venueForm.location.trim(),
-        capacity,
-        description: venueForm.description.trim(),
-        amenities,
-        is_available: true,
-      });
+      const payload = new FormData();
+      payload.append("name", venueForm.name.trim());
+      payload.append("location", venueForm.location.trim());
+      payload.append("capacity", capacity);
+      payload.append("description", venueForm.description.trim());
+      // Append amenities as a JSON string
+      payload.append("amenities", JSON.stringify(amenities));
+      payload.append("is_available", true);
+      
+      if (venueForm.image) {
+        payload.append("image", venueForm.image);
+      }
+
+      await createVenue(payload);
 
       setMessage("Venue created successfully.");
 
@@ -551,6 +557,21 @@ function Venues() {
                   Separate amenities with commas.
                 </small>
 
+              </div>
+
+              {/* IMAGE */}
+              <div className="form-group">
+                <label>Venue Image</label>
+                <input
+                  type="file"
+                  accept="image/*"
+                  onChange={(e) =>
+                    setVenueForm({
+                      ...venueForm,
+                      image: e.target.files[0],
+                    })
+                  }
+                />
               </div>
 
               {/* BUTTONS */}

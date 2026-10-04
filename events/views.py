@@ -340,6 +340,10 @@ class FeedbackListCreateView(
         queryset = Feedback.objects.select_related(
             "user",
             "event",
+            "event__organizer",
+            "event__venue",
+        ).prefetch_related(
+            "event__registrations",
         )
 
         if (
@@ -364,6 +368,10 @@ class FeedbackDetailView(
         queryset = Feedback.objects.select_related(
             "user",
             "event",
+            "event__organizer",
+            "event__venue",
+        ).prefetch_related(
+            "event__registrations",
         )
 
         if self.request.user.is_staff:
@@ -904,7 +912,20 @@ def student_dashboard_view(request):
 @api_view(["GET"])
 @permission_classes([IsAuthenticated])
 def reports_view(request):
-    registrations = Registration.objects.all()
+    user = request.user
+    is_admin = (
+        user.is_staff
+        or user.groups.filter(name__iexact="Admin").exists()
+    )
+
+    if is_admin:
+        events = Event.objects.all()
+        registrations = Registration.objects.all()
+        feedbacks = Feedback.objects.all()
+    else:
+        events = Event.objects.filter(organizer=user)
+        registrations = Registration.objects.filter(event__organizer=user)
+        feedbacks = Feedback.objects.filter(event__organizer=user)
 
     total_registrations = registrations.count()
 
@@ -925,18 +946,18 @@ def reports_view(request):
         checked_in=True,
     ).count()
 
-    feedback_stats = Feedback.objects.aggregate(
+    feedback_stats = feedbacks.aggregate(
         average_rating=Avg("rating"),
         review_count=Count("id"),
     )
 
     event_rows = []
 
-    for event in Event.objects.select_related(
+    for event in events.select_related(
         "venue"
     ).prefetch_related(
         "registrations"
-    ).all():
+    ):
 
         registrations = event.registrations.all()
         reg_count = sum(1 for r in registrations if r.status == "registered")
@@ -964,7 +985,7 @@ def reports_view(request):
 
     return Response(
         {
-            "total_events": Event.objects.count(),
+            "total_events": events.count(),
 
             "total_registrations": total_registrations,
 

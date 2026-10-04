@@ -279,28 +279,18 @@ function Events() {
     try {
       setSaving(true);
 
-      await createEvent({
-        title: form.title.trim(),
+      const payload = new FormData();
+      payload.append("title", form.title.trim());
+      payload.append("description", form.description.trim());
+      payload.append("category", form.category);
+      payload.append("start_date", new Date(form.start_date).toISOString());
+      payload.append("end_date", new Date(form.end_date).toISOString());
+      payload.append("capacity", Number(form.capacity));
+      if (form.image) {
+        payload.append("image", form.image);
+      }
 
-        description:
-          form.description.trim(),
-
-        category:
-          form.category,
-
-        start_date:
-          new Date(
-            form.start_date
-          ).toISOString(),
-
-        end_date:
-          new Date(
-            form.end_date
-          ).toISOString(),
-
-        capacity:
-          Number(form.capacity),
-      });
+      await createEvent(payload);
 
       setShowForm(false);
 
@@ -432,38 +422,21 @@ function Events() {
     try {
       setSavingEdit(true);
 
-      await updateEvent(
-        selectedEvent.id,
-        {
-          title:
-            editForm.title.trim(),
+      const payload = new FormData();
+      payload.append("title", editForm.title.trim());
+      payload.append("description", editForm.description.trim());
+      payload.append("category", editForm.category);
+      payload.append("start_date", new Date(editForm.start_date).toISOString());
+      payload.append("end_date", new Date(editForm.end_date).toISOString());
+      payload.append("capacity", Number(editForm.capacity));
+      if (editForm.venue_id) {
+        payload.append("venue_id", editForm.venue_id);
+      }
+      if (editForm.image) {
+        payload.append("image", editForm.image);
+      }
 
-          description:
-            editForm.description.trim(),
-
-          category:
-            editForm.category,
-
-          start_date:
-            new Date(
-              editForm.start_date
-            ).toISOString(),
-
-          end_date:
-            new Date(
-              editForm.end_date
-            ).toISOString(),
-
-          capacity:
-            Number(
-              editForm.capacity
-            ),
-
-          venue_id:
-            editForm.venue_id ||
-            null,
-        }
-      );
+      await updateEvent(selectedEvent.id, payload);
 
       setSelectedEvent(null);
 
@@ -1080,6 +1053,29 @@ function Events() {
                   />
                 </label>
 
+                <label
+                  style={fieldStyle}
+                >
+                  <span>
+                    Event Image
+                  </span>
+
+                  <input
+                    type="file"
+                    name="image"
+                    accept="image/*"
+                    onChange={(e) => {
+                      setForm((prev) => ({
+                        ...prev,
+                        image: e.target.files[0]
+                      }));
+                    }}
+                    style={
+                      inputStyle
+                    }
+                  />
+                </label>
+
                 <p className="venue-later-note">
                   Venue can be assigned later from Manage.
                 </p>
@@ -1410,6 +1406,29 @@ function Events() {
                     Choose a venue now, or leave it unassigned.
                   </small>
 
+                </label>
+
+                <label
+                  style={fieldStyle}
+                >
+                  <span>
+                    Event Image (Leave blank to keep existing)
+                  </span>
+
+                  <input
+                    type="file"
+                    name="image"
+                    accept="image/*"
+                    onChange={(e) => {
+                      setEditForm((prev) => ({
+                        ...prev,
+                        image: e.target.files[0]
+                      }));
+                    }}
+                    style={
+                      inputStyle
+                    }
+                  />
                 </label>
 
                 <div className="manage-event-summary">
