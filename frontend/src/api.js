@@ -348,19 +348,21 @@ export async function clearNotifications() {
 }
 
 export async function exportEventsCSV() {
-  const token = localStorage.getItem("access_token");
+  const token = getAccessToken();
   const headers = {};
   if (token) {
     headers["Authorization"] = `Bearer ${token}`;
   }
 
-  const response = await fetch(`${API_URL}/admin/export/events/`, {
+  const response = await fetch(`${API_BASE}/admin/export/events/`, {
     method: "GET",
     headers,
   });
 
   if (!response.ok) {
-    throw new Error("Failed to export CSV");
+    console.error("CSV Export failed", await response.text());
+    alert("Failed to export CSV");
+    return;
   }
 
   const blob = await response.blob();

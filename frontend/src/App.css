@@ -10318,3 +10318,6 @@ a {
   from { opacity: 0; transform: translateY(-6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+
+.admin-page-header { display: flex; justify-content: space-between; align-items: center; }
+
