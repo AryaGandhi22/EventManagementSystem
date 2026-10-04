@@ -726,7 +726,13 @@ function Events() {
                   key={event.id}
                 >
 
-                  <div className="event-card-header">
+                  {event.image && (
+                    <div style={{ width: '100%', height: '160px', overflow: 'hidden', borderTopLeftRadius: '16px', borderTopRightRadius: '16px', marginBottom: '16px' }}>
+                      <img src={event.image} alt={event.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                    </div>
+                  )}
+
+                  <div className="event-card-header" style={{ marginTop: event.image ? '0' : '0' }}>
 
                     <span
                       className={`event-category ${categoryClass(

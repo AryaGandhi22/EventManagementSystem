@@ -6,6 +6,7 @@ import {
   Users,
   Clock3,
   X,
+  Sparkles,
 } from "lucide-react";
 import {
   getEvents,
@@ -284,10 +285,23 @@ const [registrationError, setRegistrationError] =
                   </span>
 
                   <span className="student-event-status">
-                    Upcoming
+                    {event.is_recommended === 1 ? (
+                      <>
+                        <Sparkles size={11} style={{ marginRight: '4px', verticalAlign: 'middle', marginTop: '-2px' }} />
+                        Top Match
+                      </>
+                    ) : (
+                      "Upcoming"
+                    )}
                   </span>
 
                 </div>
+
+                {event.image && (
+                  <div className="student-event-card-image" style={{ width: '100%', height: '160px', overflow: 'hidden', borderRadius: '8px', marginBottom: '16px' }}>
+                    <img src={event.image} alt={event.title} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                  </div>
+                )}
 
                 <h2>
                   {event.title || "Untitled Event"}

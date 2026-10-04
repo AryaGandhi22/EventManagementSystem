@@ -24,7 +24,7 @@ function StudentDashboard() {
 
       const [eventsResponse, registrationsResponse] =
         await Promise.all([
-          getEvents({ upcoming: true }),
+          getEvents({ upcoming: true, recommended: 1 }),
           getRegistrations(),
         ]);
 
@@ -247,11 +247,11 @@ function StudentDashboard() {
 
             <div>
               <h2>
-                Upcoming Events
+                Recommended for You
               </h2>
 
               <p>
-                Events happening soon on campus
+                Events selected based on your interests
               </p>
             </div>
 
@@ -273,7 +273,7 @@ function StudentDashboard() {
               <div className="student-empty-state">
                 <Clock3 size={25} />
                 <p>
-                  Loading upcoming events...
+                  Loading recommended events...
                 </p>
               </div>
 
@@ -283,12 +283,11 @@ function StudentDashboard() {
                 <CalendarDays size={28} />
 
                 <h3>
-                  No upcoming events
+                  No recommendations yet
                 </h3>
 
                 <p>
-                  There are currently no upcoming
-                  events available.
+                  Update your profile interests to get better event recommendations!
                 </p>
               </div>
 
@@ -334,7 +333,14 @@ function StudentDashboard() {
 
 
                     <span className="student-event-status">
-                      Upcoming
+                      {event.is_recommended === 1 ? (
+                        <>
+                          <Sparkles size={11} style={{ marginRight: '4px' }} />
+                          Top Match
+                        </>
+                      ) : (
+                        "Upcoming"
+                      )}
                     </span>
 
                   </div>

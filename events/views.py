@@ -1,5 +1,5 @@
 from django.contrib.auth.models import User
-from django.db.models import Avg, Count, Q
+from django.db.models import Avg, Count, Q, Case, When, Value, IntegerField
 from django.utils import timezone
 
 from rest_framework import generics, permissions, status
@@ -83,6 +83,33 @@ class EventListCreateView(generics.ListCreateAPIView):
             queryset = queryset.filter(
                 venue_id=venue
             )
+
+        profile, _ = UserProfile.objects.get_or_create(user=self.request.user)
+        interests = profile.interests if profile.interests else []
+        
+        if interests:
+            queryset = queryset.annotate(
+                is_recommended=Case(
+                    When(category__in=interests, then=Value(1)),
+                    default=Value(0),
+                    output_field=IntegerField()
+                )
+            )
+
+        recommended = self.request.query_params.get("recommended")
+        if recommended in {"1", "true", "yes"}:
+            # Filter out events the user is already registered for
+            registered_event_ids = Registration.objects.filter(
+                user=self.request.user,
+                status__in=["registered", "waitlisted", "checked-in"]
+            ).values_list("event_id", flat=True)
+            
+            queryset = queryset.exclude(id__in=registered_event_ids)
+            
+            if interests:
+                queryset = queryset.order_by("-is_recommended", "start_date")
+            else:
+                queryset = queryset.order_by("start_date")
 
         return queryset
 

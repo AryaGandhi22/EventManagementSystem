@@ -317,7 +317,13 @@ function Venues() {
               key={venue.id}
             >
 
-              <div className="venue-card-top">
+              {venue.image && (
+                <div style={{ width: '100%', height: '140px', overflow: 'hidden', borderTopLeftRadius: '12px', borderTopRightRadius: '12px' }}>
+                  <img src={venue.image} alt={venue.name} style={{ width: '100%', height: '100%', objectFit: 'cover' }} />
+                </div>
+              )}
+
+              <div className="venue-card-top" style={{ paddingTop: venue.image ? '16px' : '24px' }}>
 
                 <div
                   className={`venue-icon ${

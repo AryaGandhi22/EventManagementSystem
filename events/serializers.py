@@ -189,6 +189,8 @@ class EventSerializer(serializers.ModelSerializer):
     available_seats = serializers.SerializerMethodField()
     registration_status = serializers.SerializerMethodField()
 
+    is_recommended = serializers.IntegerField(read_only=True, required=False)
+
     class Meta:
         model = Event
         fields = [
@@ -205,6 +207,7 @@ class EventSerializer(serializers.ModelSerializer):
             "end_date",
             "capacity",
             "image",
+            "is_recommended",
             "registration_count",
             "available_seats",
             "registration_status",
@@ -216,6 +219,7 @@ class EventSerializer(serializers.ModelSerializer):
             "organizer",
             "organizer_id",
             "venue",
+            "is_recommended",
             "registration_count",
             "available_seats",
             "registration_status",
