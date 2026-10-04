@@ -334,6 +334,64 @@ function AdminReports() {
         </div>
       </div>
 
+      <div className="admin-report-grid" style={{ marginTop: '2rem' }}>
+        <div className="admin-report-panel">
+          <div className="admin-report-panel-header">
+            <div>
+              <h2>Feedback Themes</h2>
+              <p>Average ratings across specific categories.</p>
+            </div>
+            <Star size={20} />
+          </div>
+          <div className="admin-rating-summary">
+            <div className="admin-rating-bars" style={{ width: '100%' }}>
+              <div>
+                <span>Event Content</span>
+                <strong>{report?.feedback_themes?.content ?? 0} / 5</strong>
+              </div>
+              <div>
+                <span>Venue Quality</span>
+                <strong>{report?.feedback_themes?.venue ?? 0} / 5</strong>
+              </div>
+              <div>
+                <span>Value for Money</span>
+                <strong>{report?.feedback_themes?.value ?? 0} / 5</strong>
+              </div>
+              <div>
+                <span>Organization</span>
+                <strong>{report?.feedback_themes?.organization ?? 0} / 5</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div className="admin-report-panel">
+          <div className="admin-report-panel-header">
+            <div>
+              <h2>Student Engagement</h2>
+              <p>Platform adoption and active student users.</p>
+            </div>
+            <Users size={20} />
+          </div>
+          <div className="admin-rating-summary">
+            <div className="admin-rating-number">
+              <strong>{report?.student_engagement?.engagement_rate ?? 0}%</strong>
+              <span>Active Students</span>
+            </div>
+            <div className="admin-rating-bars">
+              <div>
+                <span>Active Users (1+ Regs)</span>
+                <strong>{report?.student_engagement?.active_students ?? 0}</strong>
+              </div>
+              <div>
+                <span>Total Students</span>
+                <strong>{report?.student_engagement?.total_students ?? 0}</strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+      
       {/* Event performance */}
 
       <div className="admin-report-panel">

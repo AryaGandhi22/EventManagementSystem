@@ -1049,6 +1049,10 @@ def reports_view(request):
     feedback_stats = feedbacks.aggregate(
         average_rating=Avg("rating"),
         review_count=Count("id"),
+        avg_content=Avg("rating_content"),
+        avg_venue=Avg("rating_venue"),
+        avg_value=Avg("rating_value"),
+        avg_org=Avg("rating_organization"),
     )
 
     event_rows = []
@@ -1097,47 +1101,41 @@ def reports_view(request):
             }
         )
 
-    return Response(
-        {
-            "total_events": events.count(),
+    response_data = {
+        "total_events": events.count(),
+        "total_registrations": total_registrations,
+        "registered": registered,
+        "waitlisted": waitlisted,
+        "cancelled": cancelled,
+        "no_shows": no_shows,
+        "total_attendance": checked_in,
+        "attendance_rate": round((checked_in / registered * 100) if registered else 0, 1),
+        "average_rating": round(feedback_stats["average_rating"] or 0, 2),
+        "review_count": feedback_stats["review_count"],
+        "feedback_themes": {
+            "content": round(feedback_stats["avg_content"] or 0, 2),
+            "venue": round(feedback_stats["avg_venue"] or 0, 2),
+            "value": round(feedback_stats["avg_value"] or 0, 2),
+            "organization": round(feedback_stats["avg_org"] or 0, 2),
+        },
+        "event_performance": event_rows,
+    }
 
-            "total_registrations": total_registrations,
+    if is_admin:
+        # Venue utilization
+        venues = Venue.objects.annotate(event_count=Count('events')).values('name', 'event_count')
+        response_data['venue_utilization'] = list(venues)
 
-            "registered": registered,
-
-            "waitlisted": waitlisted,
-
-            "cancelled": cancelled,
-            
-            "no_shows": no_shows,
-
-            "total_attendance": checked_in,
-
-            "attendance_rate": round(
-                (
-                    checked_in
-                    / registered
-                    * 100
-                )
-                if registered
-                else 0,
-                1,
-            ),
-
-            "average_rating": round(
-                feedback_stats[
-                    "average_rating"
-                ] or 0,
-                2,
-            ),
-
-            "review_count": feedback_stats[
-                "review_count"
-            ],
-
-            "event_performance": event_rows,
+        # Engagement (students with >0 registrations)
+        active_students = UserProfile.objects.filter(user__registrations__isnull=False).distinct().count()
+        total_students = UserProfile.objects.count()
+        response_data['student_engagement'] = {
+            "total_students": total_students,
+            "active_students": active_students,
+            "engagement_rate": round((active_students / total_students * 100) if total_students else 0, 1)
         }
-    )
+        
+    return Response(response_data)
     
 # ============================================================
 # STUDENT REPORTS

@@ -640,11 +640,6 @@ function App() {
                 />
 
                 <Route
-                  path="/registrations"
-                  element={<Registrations />}
-                />
-
-                <Route
                   path="/participants"
                   element={<Participants />}
                 />

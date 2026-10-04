@@ -7,6 +7,7 @@ import {
   CalendarDays,
   MapPin,
 } from "lucide-react";
+import {
   createFeedback,
   getFeedback,
   getRegistrations,
@@ -681,6 +682,8 @@ const StudentFeedback = () => {
 
           </div>
         </div>
+      )}
+      </>
       )}
 
       {activeTab === "platform" && (

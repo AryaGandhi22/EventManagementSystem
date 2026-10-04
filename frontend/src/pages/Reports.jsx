@@ -35,6 +35,10 @@ function Reports() {
         </div></div>
 
         <div className="report-card"><div className="report-card-header"><div><h2>Attendance</h2><p>Registered participants who checked in.</p></div></div><div className="attendance-content"><div className="attendance-chart"><div className="attendance-center"><strong>{attendanceRate}%</strong><span>Attendance</span></div></div><div className="attendance-legend"><div><span className="legend-dot checked"></span><span>Checked In</span><strong>{report?.total_attendance ?? 0}</strong></div><div><span className="legend-dot pending"></span><span>Not Checked In / No-show</span><strong>{Math.max(total + (report?.no_shows || 0) - (report?.total_attendance || 0), 0)}</strong></div></div></div></div>
+
+        <div className="report-card"><div className="report-card-header"><div><h2>Feedback Themes</h2><p>Average ratings across categories.</p></div></div><div className="report-overview-list">
+          <div><span>Event Content</span><strong>{report?.feedback_themes?.content ?? 0} / 5</strong></div><div><span>Venue Quality</span><strong>{report?.feedback_themes?.venue ?? 0} / 5</strong></div><div><span>Value for Money</span><strong>{report?.feedback_themes?.value ?? 0} / 5</strong></div><div><span>Organization</span><strong>{report?.feedback_themes?.organization ?? 0} / 5</strong></div>
+        </div></div>
       </div>
 
       <div className="report-card event-performance"><div className="report-card-header"><div><h2>Event Performance</h2><p>Registration and attendance performance by event.</p></div></div><div className="performance-list">
