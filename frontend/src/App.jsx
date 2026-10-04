@@ -1,14 +1,6 @@
-import { useEffect, useState } from "react";
-import {
-  useLocation,
-  NavLink,
-  Routes,
-  Route,
-  Navigate,
-} from "react-router-dom";
-
+import { useState } from "react";
+import { useLocation, NavLink, Routes, Route, Navigate } from "react-router-dom";
 import Login from "./pages/login";
-import AdminSettings from "./pages/AdminSettings";
 
 import {
   LayoutDashboard,
@@ -42,6 +34,15 @@ import AdminRegistrations from "./pages/AdminRegistrations";
 import AdminFeedback from "./pages/AdminFeedback";
 import AdminReports from "./pages/AdminReports";
 
+import StudentDashboard from "./pages/StudentDashboard";
+import StudentEvents from "./pages/StudentEvents";
+import StudentMyEvents from "./pages/StudentMyEvents";
+import StudentEventHistory from "./pages/StudentEventHistory";
+import StudentRecommendations from "./pages/StudentRecommendations";
+import StudentFeedback from "./pages/StudentFeedback";
+import StudentNotifications from "./pages/StudentNotifications";
+import StudentReports from "./pages/StudentReports";
+import StudentSettings from "./pages/StudentSettings";
 
 function ProtectedRoute({ children }) {
   const accessToken =
@@ -55,38 +56,14 @@ function ProtectedRoute({ children }) {
   return children;
 }
 
-
 function App() {
   const location = useLocation();
 
-  const [currentUser, setCurrentUser] = useState(() => {
-    try {
-      return JSON.parse(
-        localStorage.getItem("college_event_user") || "null"
-      );
-    } catch {
-      return null;
-    }
-  });
-
-  useEffect(() => {
-    try {
-      const storedUser = JSON.parse(
-        localStorage.getItem("college_event_user") || "null"
-      );
-
-      setCurrentUser(storedUser);
-    } catch {
-      setCurrentUser(null);
-    }
-  }, [location.pathname]);
-
   const isAdmin = location.pathname.startsWith("/admin");
-
+  const isStudent = location.pathname.startsWith("/student");
 
   const [showNotifications, setShowNotifications] =
     useState(false);
-
 
   const [notifications, setNotifications] = useState([
     {
@@ -115,11 +92,9 @@ function App() {
     },
   ]);
 
-
   const unreadCount = notifications.filter(
     (notification) => notification.unread
   ).length;
-
 
   const markAllAsRead = () => {
     setNotifications((old) =>
@@ -129,7 +104,6 @@ function App() {
       }))
     );
   };
-
 
   const markAsRead = (id) => {
     setNotifications((old) =>
@@ -144,22 +118,6 @@ function App() {
     );
   };
 
-
-  const displayName =
-    currentUser?.name ||
-    currentUser?.first_name ||
-    currentUser?.username ||
-    "User";
-
-
-  const displayRole =
-    localStorage.getItem("user_role") === "admin"
-      ? "Admin"
-      : localStorage.getItem("user_role") === "organizer"
-      ? "Organizer"
-      : "Student";
-
-
   return (
     <Routes>
 
@@ -172,7 +130,6 @@ function App() {
         element={<Login />}
       />
 
-
       {/* =========================
           MAIN APPLICATION
       ========================== */}
@@ -182,13 +139,11 @@ function App() {
         element={
           <div className="app-container">
 
-
             {/* =========================
                 SIDEBAR
             ========================== */}
 
             <aside className="sidebar">
-
 
               <div className="logo-section">
 
@@ -203,203 +158,251 @@ function App() {
 
               </div>
 
-
               <nav className="sidebar-nav">
+  <p className="menu-title">
+  {isAdmin ? "ADMIN" : isStudent ? "STUDENT" : "MAIN MENU"}
+</p>
 
-                <p className="menu-title">
-                  {isAdmin ? "ADMIN" : "MAIN MENU"}
-                </p>
+  {isAdmin ? (
+    <>
+      <NavLink
+        to="/admin"
+        end
+        className="nav-item"
+      >
+        <LayoutDashboard size={19} />
+        <span>Dashboard</span>
+      </NavLink>
 
+      <NavLink
+        to="/admin/users"
+        className="nav-item"
+      >
+        <Users size={19} />
+        <span>Users</span>
+      </NavLink>
 
-                {isAdmin ? (
+      <NavLink
+        to="/admin/events"
+        className="nav-item"
+      >
+        <CalendarDays size={19} />
+        <span>Events</span>
+      </NavLink>
 
-                  <>
+      <NavLink
+        to="/admin/venues"
+        className="nav-item"
+      >
+        <MapPin size={19} />
+        <span>Venues</span>
+      </NavLink>
 
-                    <NavLink
-                      to="/admin"
-                      end
-                      className="nav-item"
-                    >
-                      <LayoutDashboard size={19} />
-                      <span>Dashboard</span>
-                    </NavLink>
+      <NavLink
+        to="/admin/registrations"
+        className="nav-item"
+      >
+        <ClipboardList size={19} />
+        <span>Registrations</span>
+      </NavLink>
 
+      <NavLink
+        to="/admin/feedback"
+        className="nav-item"
+      >
+        <Users size={19} />
+        <span>Feedback</span>
+      </NavLink>
 
-                    <NavLink
-                      to="/admin/users"
-                      className="nav-item"
-                    >
-                      <Users size={19} />
-                      <span>Users</span>
-                    </NavLink>
+      <p className="menu-title management-title">
+        ANALYTICS
+      </p>
 
+      <NavLink
+        to="/admin/reports"
+        className="nav-item"
+      >
+        <BarChart3 size={19} />
+        <span>Reports</span>
+      </NavLink>
 
-                    <NavLink
-                      to="/admin/events"
-                      className="nav-item"
-                    >
-                      <CalendarDays size={19} />
-                      <span>Events</span>
-                    </NavLink>
+      <p className="menu-title management-title">
+        SYSTEM
+      </p>
 
+      <NavLink to="/admin/settings" className="sidebar-link">
+  <Settings size={18} />
+  <span>Settings</span>
+</NavLink>
+    </>
+  ) : isStudent ? (
+    <>
+      <NavLink
+    to="/student"
+    end
+    className="nav-item"
+  >
+    <LayoutDashboard size={19} />
+    <span>Dashboard</span>
+  </NavLink>
 
-                    <NavLink
-                      to="/admin/venues"
-                      className="nav-item"
-                    >
-                      <MapPin size={19} />
-                      <span>Venues</span>
-                    </NavLink>
+  <NavLink
+    to="/student/events"
+    className="nav-item"
+  >
+    <CalendarDays size={19} />
+    <span>Browse Events</span>
+  </NavLink>
 
+  <NavLink
+    to="/student/my-events"
+    className="nav-item"
+  >
+    <ClipboardList size={19} />
+    <span>My Events</span>
+  </NavLink>
 
-                    <NavLink
-                      to="/admin/registrations"
-                      className="nav-item"
-                    >
-                      <ClipboardList size={19} />
-                      <span>Registrations</span>
-                    </NavLink>
+  <NavLink
+    to="/student/event-history"
+    className="nav-item"
+  >
+    <CalendarDays size={19} />
+    <span>Event History</span>
+  </NavLink>
 
+  <NavLink
+    to="/student/recommendations"
+    className="nav-item"
+  >
+    <CalendarDays size={19} />
+    <span>Recommendations</span>
+  </NavLink>
 
-                    <NavLink
-                      to="/admin/feedback"
-                      className="nav-item"
-                    >
-                      <Users size={19} />
-                      <span>Feedback</span>
-                    </NavLink>
+  <NavLink
+    to="/student/feedback"
+    className="nav-item"
+  >
+    <Users size={19} />
+    <span>My Feedback</span>
+  </NavLink>
 
+  <NavLink
+    to="/student/notifications"
+    className="nav-item"
+  >
+    <Bell size={19} />
+    <span>Notifications</span>
+  </NavLink>
 
-                    <p className="menu-title management-title">
-                      ANALYTICS
-                    </p>
+  <p className="menu-title management-title">
+    MY ACTIVITY
+  </p>
 
+  <NavLink
+    to="/student/reports"
+    className="nav-item"
+  >
+    <BarChart3 size={19} />
+    <span>Reports</span>
+  </NavLink>
 
-                    <NavLink
-                      to="/admin/reports"
-                      className="nav-item"
-                    >
-                      <BarChart3 size={19} />
-                      <span>Reports</span>
-                    </NavLink>
+  <p className="menu-title management-title">
+    ACCOUNT
+  </p>
 
+  
 
-                    <p className="menu-title management-title">
-                      SYSTEM
-                    </p>
+  <NavLink
+  to="/student/settings"
+  className="nav-item"
+>
+  <Settings size={19} />
+  <span>Settings</span>
+</NavLink>
+</>
 
+    ) : (
+    <>
+      <NavLink
+        to="/"
+        end
+        className="nav-item"
+      >
+        <LayoutDashboard size={19} />
+        <span>Dashboard</span>
+      </NavLink>
 
-                    <NavLink
-                      to="/admin/settings"
-                      className="sidebar-link"
-                    >
-                      <Settings size={18} />
-                      <span>Settings</span>
-                    </NavLink>
+      <NavLink
+        to="/events"
+        className="nav-item"
+      >
+        <CalendarDays size={19} />
+        <span>Events</span>
+      </NavLink>
 
-                  </>
+      <NavLink
+        to="/registrations"
+        className="nav-item"
+      >
+        <ClipboardList size={19} />
+        <span>My Registrations</span>
+      </NavLink>
 
-                ) : (
+      <NavLink
+        to="/participants"
+        className="nav-item"
+      >
+        <Users size={19} />
+        <span>Participants</span>
+      </NavLink>
 
-                  <>
+      <NavLink
+        to="/venues"
+        className="nav-item"
+      >
+        <MapPin size={19} />
+        <span>Venues</span>
+      </NavLink>
 
-                    <NavLink
-                      to="/"
-                      end
-                      className="nav-item"
-                    >
-                      <LayoutDashboard size={19} />
-                      <span>Dashboard</span>
-                    </NavLink>
+      <p className="menu-title management-title">
+        MANAGEMENT
+      </p>
 
+      <NavLink
+        to="/reports"
+        className="nav-item"
+      >
+        <BarChart3 size={19} />
+        <span>Reports</span>
+      </NavLink>
 
-                    <NavLink
-                      to="/events"
-                      className="nav-item"
-                    >
-                      <CalendarDays size={19} />
-                      <span>Events</span>
-                    </NavLink>
-
-
-                    <NavLink
-                      to="/registrations"
-                      className="nav-item"
-                    >
-                      <ClipboardList size={19} />
-                      <span>My Registrations</span>
-                    </NavLink>
-
-
-                    <NavLink
-                      to="/participants"
-                      className="nav-item"
-                    >
-                      <Users size={19} />
-                      <span>Participants</span>
-                    </NavLink>
-
-
-                    <NavLink
-                      to="/venues"
-                      className="nav-item"
-                    >
-                      <MapPin size={19} />
-                      <span>Venues</span>
-                    </NavLink>
-
-
-                    <p className="menu-title management-title">
-                      MANAGEMENT
-                    </p>
-
-
-                    <NavLink
-                      to="/reports"
-                      className="nav-item"
-                    >
-                      <BarChart3 size={19} />
-                      <span>Reports</span>
-                    </NavLink>
-
-
-                    <NavLink
-                      to="/settings"
-                      className="nav-item"
-                    >
-                      <Settings size={19} />
-                      <span>Settings</span>
-                    </NavLink>
-
-                  </>
-
-                )}
-
-              </nav>
-
-
-              {/* =========================
-                  SIDEBAR PROFILE
-              ========================== */}
+      <NavLink
+        to="/settings"
+        className="nav-item"
+      >
+        <Settings size={19} />
+        <span>Settings</span>
+      </NavLink>
+    </>
+  )}
+</nav>
 
               <div className="sidebar-bottom">
 
                 <div className="profile-mini">
 
                   <div className="avatar">
-                    {displayName.charAt(0).toUpperCase()}
+                    P
                   </div>
-
 
                   <div className="profile-info">
 
                     <strong>
-                      {displayName}
+                      Pranjal Hon
                     </strong>
 
-
                     <span>
-                      {displayRole}
+                      Student
                     </span>
 
                   </div>
@@ -410,20 +413,17 @@ function App() {
 
             </aside>
 
-
             {/* =========================
                 MAIN CONTENT
             ========================== */}
 
             <main className="main-content">
 
-
               {/* =========================
                   TOPBAR
               ========================== */}
 
               <header className="topbar">
-
 
                 <div className="search-box">
 
@@ -436,9 +436,7 @@ function App() {
 
                 </div>
 
-
                 <div className="topbar-actions">
-
 
                   {/* =========================
                       NOTIFICATIONS
@@ -467,11 +465,9 @@ function App() {
 
                     </button>
 
-
                     {showNotifications && (
 
                       <div className="notification-dropdown">
-
 
                         <div className="notification-header">
 
@@ -489,7 +485,6 @@ function App() {
 
                           </div>
 
-
                           <button
                             type="button"
                             className="notification-close"
@@ -504,7 +499,6 @@ function App() {
                           </button>
 
                         </div>
-
 
                         <div className="notification-list">
 
@@ -547,7 +541,6 @@ function App() {
 
                                   </div>
 
-
                                   <div className="notification-content">
 
                                     <strong>
@@ -556,13 +549,11 @@ function App() {
                                       }
                                     </strong>
 
-
                                     <p>
                                       {
                                         notification.message
                                       }
                                     </p>
-
 
                                     <span>
                                       {
@@ -571,7 +562,6 @@ function App() {
                                     </span>
 
                                   </div>
-
 
                                   {notification.unread && (
                                     <span className="unread-indicator" />
@@ -585,7 +575,6 @@ function App() {
                           )}
 
                         </div>
-
 
                         {notifications.length > 0 && (
 
@@ -611,27 +600,22 @@ function App() {
 
                   </div>
 
-
-                  {/* =========================
-                      PROFILE
-                  ========================== */}
+                  {/* Profile */}
 
                   <div className="topbar-profile">
 
                     <div className="avatar">
-                      {displayName.charAt(0).toUpperCase()}
+                      P
                     </div>
-
 
                     <div>
 
                       <strong>
-                        {displayName}
+                        Pranjal Hon
                       </strong>
 
-
                       <span>
-                        {displayRole}
+                        Student
                       </span>
 
                     </div>
@@ -642,170 +626,214 @@ function App() {
 
               </header>
 
-
               {/* =========================
                   APPLICATION ROUTES
               ========================== */}
 
               <Routes>
 
-
                 <Route
                   path="/"
                   element={
-                    <ProtectedRoute>
-                      <Dashboard />
-                    </ProtectedRoute>
+                  <ProtectedRoute>
+                  <Dashboard />
+                  </ProtectedRoute>
                   }
                 />
-
 
                 <Route
                   path="/events"
                   element={<Events />}
                 />
 
-
                 <Route
                   path="/registrations"
                   element={<Registrations />}
                 />
-
 
                 <Route
                   path="/participants"
                   element={<Participants />}
                 />
 
-
                 <Route
                   path="/venues"
                   element={<Venues />}
                 />
-
 
                 <Route
                   path="/reports"
                   element={<Reports />}
                 />
 
-
                 <Route
                   path="/settings"
                   element={<SettingsPage />}
                 />
 
-
-                {/* =========================
-                    ADMIN ROUTES
-                ========================== */}
+                {/* Temporary placeholders for future roles */}
 
                 <Route
-                  path="/admin"
-                  element={
-                    <ProtectedRoute>
-                      <AdminDashboard />
-                    </ProtectedRoute>
-                  }
-                />
+  path="/admin"
+  element={
+    <ProtectedRoute>
+      <AdminDashboard />
+    </ProtectedRoute>
+  }
+/>
 
+<Route
+  path="/admin/users"
+  element={
+    <ProtectedRoute>
+      <AdminUsers />
+    </ProtectedRoute>
+  }
+/>
+<Route
+  path="/admin/events"
+  element={
+    <ProtectedRoute>
+      <AdminEvents />
+    </ProtectedRoute>
+  }
+/>
 
+<Route
+  path="/admin/venues"
+  element={
+    <ProtectedRoute>
+      <AdminVenues />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/admin/registrations"
+  element={
+    <ProtectedRoute>
+      <AdminRegistrations />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/admin/feedback"
+  element={
+    <ProtectedRoute>
+      <AdminFeedback />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/admin/reports"
+  element={
+    <ProtectedRoute>
+      <AdminReports />
+    </ProtectedRoute>
+  }
+/>
+<Route
+  path="/admin/settings"
+  element={
+    <ProtectedRoute>
+      <SettingsPage />
+    </ProtectedRoute>
+  }
+/>
                 <Route
-                  path="/admin/users"
-                  element={
-                    <ProtectedRoute>
-                      <AdminUsers />
-                    </ProtectedRoute>
-                  }
-                />
+  path="/student"
+  element={
+    <ProtectedRoute>
+      <StudentDashboard />
+    </ProtectedRoute>
+  }
+/>
 
+<Route
+  path="/student/events"
+  element={
+    <ProtectedRoute>
+      <StudentEvents />
+    </ProtectedRoute>
+  }
+/>
 
-                <Route
-                  path="/admin/events"
-                  element={
-                    <ProtectedRoute>
-                      <AdminEvents />
-                    </ProtectedRoute>
-                  }
-                />
+<Route
+  path="/student/my-events"
+  element={
+    <ProtectedRoute>
+      <StudentMyEvents />
+    </ProtectedRoute>
+  }
+/>
 
+<Route
+  path="/student/event-history"
+  element={
+    <ProtectedRoute>
+      <StudentEventHistory />
+    </ProtectedRoute>
+  }
+/>
 
-                <Route
-                  path="/admin/venues"
-                  element={
-                    <ProtectedRoute>
-                      <AdminVenues />
-                    </ProtectedRoute>
-                  }
-                />
+<Route
+  path="/student"
+  element={
+    <div style={{ padding: "30px" }}>
+      Student dashboard coming next.
+    </div>
+  }
+/>
 
+<Route
+  path="/student/recommendations"
+  element={
+    <ProtectedRoute>
+      <StudentRecommendations />
+    </ProtectedRoute>
+  }
+/>
 
-                <Route
-                  path="/admin/registrations"
-                  element={
-                    <ProtectedRoute>
-                      <AdminRegistrations />
-                    </ProtectedRoute>
-                  }
-                />
+<Route
+  path="/student/feedback"
+  element={
+    <ProtectedRoute>
+      <StudentFeedback />
+    </ProtectedRoute>
+  }
+/>
 
+<Route
+  path="/student/notifications"
+  element={
+    <ProtectedRoute>
+      <StudentNotifications />
+    </ProtectedRoute>
+  }
+/>
 
-                <Route
-                  path="/admin/feedback"
-                  element={
-                    <ProtectedRoute>
-                      <AdminFeedback />
-                    </ProtectedRoute>
-                  }
-                />
-
-
-                <Route
-                  path="/admin/reports"
-                  element={
-                    <ProtectedRoute>
-                      <AdminReports />
-                    </ProtectedRoute>
-                  }
-                />
-
-
-                <Route
-                  path="/admin/settings"
-                  element={
-                    <ProtectedRoute>
-                      <AdminSettings />
-                    </ProtectedRoute>
-                  }
-                />
-
-
-                {/* =========================
-                    STUDENT
-                ========================== */}
-
-                <Route
-                  path="/student"
-                  element={
-                    <div style={{ padding: "30px" }}>
-                      Student dashboard coming next.
-                    </div>
-                  }
-                />
-
-
-                {/* =========================
-                    FALLBACK
-                ========================== */}
+<Route
+  path="/student/reports"
+  element={
+    <ProtectedRoute>
+      <StudentReports />
+    </ProtectedRoute>
+  }
+/>
+<Route
+  path="/student/settings"
+  element={
+    <ProtectedRoute>
+      <StudentSettings />
+    </ProtectedRoute>
+  }
+/>
 
                 <Route
                   path="*"
-                  element={
-                    <Navigate
-                      to="/"
-                      replace
-                    />
-                  }
+                  element={<Navigate to="/" replace />}
                 />
 
               </Routes>
@@ -819,6 +847,5 @@ function App() {
     </Routes>
   );
 }
-
 
 export default App;
