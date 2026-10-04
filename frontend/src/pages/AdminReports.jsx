@@ -7,10 +7,12 @@ import {
   Star,
   TrendingUp,
   CheckCircle,
+  CheckCircle,
   Clock,
+  Download,
 } from "lucide-react";
 
-import { getReports } from "../api";
+import { getReports, exportEventsCSV } from "../api";
 
 function AdminReports() {
   const [report, setReport] = useState(null);
@@ -99,6 +101,14 @@ function AdminReports() {
             Overview of events, registrations, attendance and feedback.
           </p>
         </div>
+        <button
+          className="btn-primary"
+          onClick={exportEventsCSV}
+          style={{ display: "flex", alignItems: "center", gap: "8px" }}
+        >
+          <Download size={16} />
+          Export CSV
+        </button>
       </div>
 
       {/* Summary cards */}

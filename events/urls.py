@@ -24,6 +24,7 @@ from .views import (
     VenueListCreateView,
     admin_event_status_view,
     admin_user_status_view,
+    admin_export_events_csv,
     dashboard_view,
     health_view,
     reports_view,
@@ -95,6 +96,12 @@ urlpatterns = [
         "admin/events/<str:pk>/status/",
         admin_event_status_view,
         name="admin-event-status",
+    ),
+
+    path(
+        "admin/export/events/",
+        admin_export_events_csv,
+        name="admin-export-events",
     ),
 
     # ========================================================

@@ -7,6 +7,9 @@ from rest_framework.decorators import api_view, permission_classes
 from rest_framework.permissions import IsAuthenticated, IsAdminUser
 from rest_framework.response import Response
 
+from django.http import HttpResponse
+import csv
+
 from rest_framework_simplejwt.tokens import RefreshToken
 
 from .models import Event, Feedback, Registration, UserProfile, Venue, Notification
@@ -1100,6 +1103,50 @@ def admin_event_status_view(request, pk):
             "detail": f"Event status updated to '{new_status}'.",
         }
     )
+
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def admin_export_events_csv(request):
+    """
+    Admin-only endpoint to export events as CSV.
+    """
+    is_admin = (
+        request.user.is_staff
+        or request.user.groups.filter(name__iexact="Admin").exists()
+    )
+
+    if not is_admin:
+        return Response(
+            {"detail": "Admin access required."},
+            status=status.HTTP_403_FORBIDDEN,
+        )
+
+    response = HttpResponse(content_type="text/csv")
+    response["Content-Disposition"] = 'attachment; filename="events_export.csv"'
+
+    writer = csv.writer(response)
+    writer.writerow([
+        "Event ID", "Title", "Category", "Status",
+        "Start Date", "End Date", "Capacity",
+        "Total Registered", "Organizer"
+    ])
+
+    events = Event.objects.all().prefetch_related("registrations")
+    for event in events:
+        registered_count = event.registrations.filter(status="registered").count()
+        writer.writerow([
+            str(event.pk),
+            event.title,
+            event.category,
+            event.status,
+            event.start_date.strftime("%Y-%m-%d %H:%M:%S") if event.start_date else "",
+            event.end_date.strftime("%Y-%m-%d %H:%M:%S") if event.end_date else "",
+            event.capacity,
+            registered_count,
+            event.organizer.username if event.organizer else ""
+        ])
+
+    return response
 
 
 # ============================================================

@@ -345,4 +345,30 @@ export async function clearNotifications() {
   return api(`/notifications/`, {
     method: "DELETE",
   });
+}
+
+export async function exportEventsCSV() {
+  const token = localStorage.getItem("access_token");
+  const headers = {};
+  if (token) {
+    headers["Authorization"] = `Bearer ${token}`;
+  }
+
+  const response = await fetch(`${API_URL}/admin/export/events/`, {
+    method: "GET",
+    headers,
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to export CSV");
+  }
+
+  const blob = await response.blob();
+  const url = window.URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = "events_export.csv";
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
 }
