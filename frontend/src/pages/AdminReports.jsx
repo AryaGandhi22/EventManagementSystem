@@ -1,33 +1,103 @@
+import { useEffect, useState } from "react";
 import {
   BarChart3,
   CalendarDays,
   Users,
-  MapPin,
+  ClipboardList,
   Star,
   TrendingUp,
+  CheckCircle,
+  Clock,
 } from "lucide-react";
 
-function AdminReports() {
-  const eventStats = [
-    { name: "Tech Fest", registrations: 86 },
-    { name: "Cultural Night", registrations: 142 },
-    { name: "Sports Meet", registrations: 64 },
-    { name: "AI Workshop", registrations: 58 },
-  ];
+import { getReports } from "../api";
 
-  const venueStats = [
-    { name: "Main Auditorium", usage: "78%" },
-    { name: "Seminar Hall", usage: "64%" },
-    { name: "Sports Ground", usage: "52%" },
-    { name: "Computer Lab 1", usage: "41%" },
-  ];
+function AdminReports() {
+  const [report, setReport] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    loadReports();
+  }, []);
+
+  async function loadReports() {
+    try {
+      setLoading(true);
+      setError("");
+
+      const data = await getReports();
+
+      console.log("REPORTS API DATA:", data);
+
+      setReport(data);
+    } catch (err) {
+      console.error("REPORTS API ERROR:", err);
+      setError(
+        err?.message || "Unable to load reports."
+      );
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  if (loading) {
+    return (
+      <div className="admin-page">
+        <div className="admin-page-header">
+          <div>
+            <h1>Reports</h1>
+            <p>
+              Overview of events, registrations, attendance and feedback.
+            </p>
+          </div>
+        </div>
+
+        <div className="admin-report-panel">
+          <p>Loading reports...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+      <div className="admin-page">
+        <div className="admin-page-header">
+          <div>
+            <h1>Reports</h1>
+            <p>
+              Overview of events, registrations, attendance and feedback.
+            </p>
+          </div>
+        </div>
+
+        <div className="admin-report-panel">
+          <h2>Unable to load reports</h2>
+          <p>{error}</p>
+
+          <button
+            type="button"
+            onClick={loadReports}
+            className="admin-report-retry"
+          >
+            Try Again
+          </button>
+        </div>
+      </div>
+    );
+  }
+
+  const eventPerformance = report?.event_performance || [];
 
   return (
     <div className="admin-page">
       <div className="admin-page-header">
         <div>
           <h1>Reports</h1>
-          <p>Overview of events, registrations, venues and feedback.</p>
+          <p>
+            Overview of events, registrations, attendance and feedback.
+          </p>
         </div>
       </div>
 
@@ -41,10 +111,11 @@ function AdminReports() {
 
           <div>
             <span>Total Events</span>
-            <strong>24</strong>
+            <strong>{report?.total_events ?? 0}</strong>
+
             <small>
               <TrendingUp size={13} />
-              12% this month
+              Events in system
             </small>
           </div>
         </div>
@@ -56,25 +127,29 @@ function AdminReports() {
 
           <div>
             <span>Total Registrations</span>
-            <strong>1,284</strong>
+            <strong>{report?.total_registrations ?? 0}</strong>
+
             <small>
               <TrendingUp size={13} />
-              18% this month
+              All registrations
             </small>
           </div>
         </div>
 
         <div className="admin-report-card">
           <div className="admin-report-icon">
-            <MapPin size={21} />
+            <CheckCircle size={21} />
           </div>
 
           <div>
-            <span>Venue Usage</span>
-            <strong>68%</strong>
+            <span>Attendance Rate</span>
+            <strong>
+              {report?.attendance_rate ?? 0}%
+            </strong>
+
             <small>
-              <TrendingUp size={13} />
-              8% this month
+              <CheckCircle size={13} />
+              {report?.total_attendance ?? 0} attended
             </small>
           </div>
         </div>
@@ -86,83 +161,231 @@ function AdminReports() {
 
           <div>
             <span>Average Rating</span>
-            <strong>4.3/5</strong>
+            <strong>
+              {report?.average_rating ?? 0}/5
+            </strong>
+
             <small>
               <Star size={13} />
-              From 186 reviews
+              From {report?.review_count ?? 0} reviews
             </small>
           </div>
         </div>
       </div>
 
-      {/* Event registrations */}
+      {/* Registration status */}
 
       <div className="admin-report-grid">
         <div className="admin-report-panel">
           <div className="admin-report-panel-header">
             <div>
-              <h2>Event Registrations</h2>
-              <p>Registrations across recent events.</p>
+              <h2>Registration Status</h2>
+              <p>Current registration breakdown.</p>
             </div>
 
-            <BarChart3 size={20} />
+            <ClipboardList size={20} />
           </div>
 
           <div className="admin-report-bars">
-            {eventStats.map((event) => (
-              <div className="admin-report-bar-row" key={event.name}>
+            <div className="admin-report-bar-row">
+              <div className="admin-report-bar-label">
+                <span>Registered</span>
+                <strong>{report?.registered ?? 0}</strong>
+              </div>
+
+              <div className="admin-report-bar-track">
+                <div
+                  className="admin-report-bar-fill"
+                  style={{
+                    width: `${
+                      report?.total_registrations
+                        ? (report.registered /
+                            report.total_registrations) *
+                          100
+                        : 0
+                    }%`,
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="admin-report-bar-row">
+              <div className="admin-report-bar-label">
+                <span>Waitlisted</span>
+                <strong>{report?.waitlisted ?? 0}</strong>
+              </div>
+
+              <div className="admin-report-bar-track">
+                <div
+                  className="admin-report-bar-fill"
+                  style={{
+                    width: `${
+                      report?.total_registrations
+                        ? (report.waitlisted /
+                            report.total_registrations) *
+                          100
+                        : 0
+                    }%`,
+                  }}
+                />
+              </div>
+            </div>
+
+            <div className="admin-report-bar-row">
+              <div className="admin-report-bar-label">
+                <span>Cancelled</span>
+                <strong>{report?.cancelled ?? 0}</strong>
+              </div>
+
+              <div className="admin-report-bar-track">
+                <div
+                  className="admin-report-bar-fill"
+                  style={{
+                    width: `${
+                      report?.total_registrations
+                        ? (report.cancelled /
+                            report.total_registrations) *
+                          100
+                        : 0
+                    }%`,
+                  }}
+                />
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Attendance */}
+
+        <div className="admin-report-panel">
+          <div className="admin-report-panel-header">
+            <div>
+              <h2>Attendance</h2>
+              <p>Current event attendance overview.</p>
+            </div>
+
+            <CheckCircle size={20} />
+          </div>
+
+          <div className="admin-rating-summary">
+            <div className="admin-rating-number">
+              <strong>
+                {report?.total_attendance ?? 0}
+              </strong>
+
+              <span>Total attendance</span>
+            </div>
+
+            <div className="admin-rating-bars">
+              <div>
+                <span>Attendance rate</span>
+
+                <div>
+                  <i
+                    style={{
+                      width: `${Math.min(
+                        report?.attendance_rate ?? 0,
+                        100
+                      )}%`,
+                    }}
+                  />
+                </div>
+
+                <strong>
+                  {report?.attendance_rate ?? 0}%
+                </strong>
+              </div>
+
+              <div>
+                <span>Registered</span>
+
+                <div>
+                  <i
+                    style={{
+                      width: `${
+                        report?.total_registrations
+                          ? Math.min(
+                              (report.registered /
+                                report.total_registrations) *
+                                100,
+                              100
+                            )
+                          : 0
+                      }%`,
+                    }}
+                  />
+                </div>
+
+                <strong>
+                  {report?.registered ?? 0}
+                </strong>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Event performance */}
+
+      <div className="admin-report-panel">
+        <div className="admin-report-panel-header">
+          <div>
+            <h2>Event Performance</h2>
+            <p>
+              Registration and attendance for each event.
+            </p>
+          </div>
+
+          <BarChart3 size={20} />
+        </div>
+
+        <div className="admin-report-bars">
+          {eventPerformance.length === 0 ? (
+            <p>No event performance data available.</p>
+          ) : (
+            eventPerformance.map((event) => (
+              <div
+                className="admin-report-bar-row"
+                key={event.event_id}
+              >
                 <div className="admin-report-bar-label">
-                  <span>{event.name}</span>
-                  <strong>{event.registrations}</strong>
+                  <span>
+                    {event.event}{" "}
+                    <small>({event.category})</small>
+                  </span>
+
+                  <strong>
+                    {event.registrations}
+                  </strong>
                 </div>
 
                 <div className="admin-report-bar-track">
                   <div
                     className="admin-report-bar-fill"
                     style={{
-                      width: `${Math.min(
-                        (event.registrations / 150) * 100,
-                        100
-                      )}%`,
+                      width: `${
+                        event.registrations > 0
+                          ? Math.min(
+                              event.registrations * 10,
+                              100
+                            )
+                          : 0
+                      }%`,
                     }}
                   />
                 </div>
-              </div>
-            ))}
-          </div>
-        </div>
 
-        {/* Venue usage */}
+                <div className="admin-report-bar-label">
+                  <span>Attendance</span>
 
-        <div className="admin-report-panel">
-          <div className="admin-report-panel-header">
-            <div>
-              <h2>Venue Usage</h2>
-              <p>Current venue utilization.</p>
-            </div>
-
-            <MapPin size={20} />
-          </div>
-
-          <div className="admin-venue-report-list">
-            {venueStats.map((venue) => (
-              <div className="admin-venue-report-row" key={venue.name}>
-                <div>
-                  <strong>{venue.name}</strong>
-
-                  <div className="admin-venue-progress">
-                    <div
-                      style={{
-                        width: venue.usage,
-                      }}
-                    />
-                  </div>
+                  <strong>
+                    {event.attendance} /{" "}
+                    {event.registrations}
+                  </strong>
                 </div>
-
-                <span>{venue.usage}</span>
               </div>
-            ))}
-          </div>
+            ))
+          )}
         </div>
       </div>
 
@@ -172,7 +395,9 @@ function AdminReports() {
         <div className="admin-report-panel-header">
           <div>
             <h2>Feedback Summary</h2>
-            <p>Overall participant satisfaction.</p>
+            <p>
+              Overall participant satisfaction based on submitted reviews.
+            </p>
           </div>
 
           <Star size={20} />
@@ -180,55 +405,86 @@ function AdminReports() {
 
         <div className="admin-rating-summary">
           <div className="admin-rating-number">
-            <strong>4.3</strong>
+            <strong>
+              {report?.average_rating ?? 0}
+            </strong>
+
             <div className="admin-rating-stars">
-              ★★★★★
+              {"★".repeat(
+                Math.round(report?.average_rating ?? 0)
+              )}
+              {"☆".repeat(
+                5 -
+                  Math.round(
+                    report?.average_rating ?? 0
+                  )
+              )}
             </div>
-            <span>Average rating</span>
+
+            <span>Average rating out of 5</span>
           </div>
 
           <div className="admin-rating-bars">
             <div>
-              <span>5 ★</span>
+              <span>Reviews</span>
+
               <div>
-                <i style={{ width: "72%" }} />
+                <i
+                  style={{
+                    width:
+                      report?.review_count > 0
+                        ? "100%"
+                        : "0%",
+                  }}
+                />
               </div>
-              <strong>72%</strong>
+
+              <strong>
+                {report?.review_count ?? 0}
+              </strong>
             </div>
 
             <div>
-              <span>4 ★</span>
-              <div>
-                <i style={{ width: "18%" }} />
-              </div>
-              <strong>18%</strong>
-            </div>
+              <span>Average rating</span>
 
-            <div>
-              <span>3 ★</span>
               <div>
-                <i style={{ width: "7%" }} />
+                <i
+                  style={{
+                    width: `${
+                      ((report?.average_rating ?? 0) /
+                        5) *
+                      100
+                    }%`,
+                  }}
+                />
               </div>
-              <strong>7%</strong>
-            </div>
 
-            <div>
-              <span>2 ★</span>
-              <div>
-                <i style={{ width: "2%" }} />
-              </div>
-              <strong>2%</strong>
-            </div>
-
-            <div>
-              <span>1 ★</span>
-              <div>
-                <i style={{ width: "1%" }} />
-              </div>
-              <strong>1%</strong>
+              <strong>
+                {report?.average_rating ?? 0}/5
+              </strong>
             </div>
           </div>
         </div>
+      </div>
+
+      {/* Report information */}
+
+      <div className="admin-report-panel">
+        <div className="admin-report-panel-header">
+          <div>
+            <h2>Report Information</h2>
+            <p>
+              Values shown here are calculated from the current database.
+            </p>
+          </div>
+
+          <Clock size={20} />
+        </div>
+
+        <p>
+          This report uses live event, registration, attendance and
+          feedback data from the backend.
+        </p>
       </div>
     </div>
   );

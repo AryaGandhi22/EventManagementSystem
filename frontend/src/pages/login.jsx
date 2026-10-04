@@ -33,6 +33,19 @@ function Login() {
     }));
   };
 
+  const clearOldSession = () => {
+    // Clear old authentication keys
+    localStorage.removeItem("access_token");
+    localStorage.removeItem("refresh_token");
+    localStorage.removeItem("current_user");
+    localStorage.removeItem("user_role");
+
+    // Clear the keys used by api.js
+    localStorage.removeItem("college_event_access");
+    localStorage.removeItem("college_event_refresh");
+    localStorage.removeItem("college_event_user");
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
 
@@ -56,17 +69,64 @@ function Login() {
     try {
       setLoading(true);
 
+      // Remove any old student/organizer/admin session
+      clearOldSession();
+
       const data = await loginUser({
         username: form.email.trim(),
         password: form.password,
       });
 
+      const actualRole = String(
+        data?.role || ""
+      ).toLowerCase();
+
+      // Verify backend role BEFORE saving the session
+      if (selectedRole !== actualRole) {
+        clearOldSession();
+
+        setError(
+          `This account is not registered as ${selectedRole}.`
+        );
+
+        return;
+      }
+
+      // Store authentication using the same keys as api.js
       if (data?.access) {
-        localStorage.setItem("access_token", data.access);
+        localStorage.setItem(
+          "college_event_access",
+          data.access
+        );
       }
 
       if (data?.refresh) {
-        localStorage.setItem("refresh_token", data.refresh);
+        localStorage.setItem(
+          "college_event_refresh",
+          data.refresh
+        );
+      }
+
+      if (data?.user) {
+        localStorage.setItem(
+          "college_event_user",
+          JSON.stringify(data.user)
+        );
+      }
+
+      // Also keep these keys for existing frontend code
+      if (data?.access) {
+        localStorage.setItem(
+          "access_token",
+          data.access
+        );
+      }
+
+      if (data?.refresh) {
+        localStorage.setItem(
+          "refresh_token",
+          data.refresh
+        );
       }
 
       if (data?.user) {
@@ -76,39 +136,36 @@ function Login() {
         );
       }
 
-      if (data?.role) {
-        localStorage.setItem("user_role", data.role);
-      }
-
-      const actualRole = String(data?.role || "").toLowerCase();
-
-      // Check selected role against actual backend role
-      if (selectedRole !== actualRole) {
-        setError(
-          `This account is not registered as ${selectedRole}.`
-        );
-        return;
-      }
+      localStorage.setItem(
+        "user_role",
+        actualRole
+      );
 
       // Role-based navigation
       if (actualRole === "admin") {
-        navigate("/admin");
+        navigate("/admin", { replace: true });
         return;
       }
 
       if (actualRole === "organizer") {
-        navigate("/organizer");
+        navigate("/organizer", { replace: true });
         return;
       }
 
       if (actualRole === "student") {
-        navigate("/student");
+        navigate("/student", { replace: true });
         return;
       }
 
-      setError("Your account does not have a valid role.");
+      clearOldSession();
+
+      setError(
+        "Your account does not have a valid role."
+      );
     } catch (e) {
       console.error("Login error:", e);
+
+      clearOldSession();
 
       const responseData = e?.data;
 
@@ -146,7 +203,9 @@ function Login() {
         {/* Header */}
         <div className="login-card-header">
           <h1>EventHub</h1>
+
           <h2>Welcome back</h2>
+
           <p>
             Sign in to continue to your college events
           </p>
@@ -159,6 +218,7 @@ function Login() {
           </label>
 
           <div className="login-role-buttons">
+
             <button
               type="button"
               className={`login-role-button ${
@@ -206,6 +266,7 @@ function Login() {
             >
               Admin
             </button>
+
           </div>
         </div>
 
@@ -214,6 +275,7 @@ function Login() {
           onSubmit={handleSubmit}
           className="login-form"
         >
+
           {/* Username */}
           <div className="login-field">
             <label htmlFor="email">
@@ -309,6 +371,7 @@ function Login() {
               </>
             )}
           </button>
+
         </form>
 
         {/* Footer */}
@@ -317,6 +380,7 @@ function Login() {
             College Event Management System
           </span>
         </div>
+
       </div>
     </div>
   );

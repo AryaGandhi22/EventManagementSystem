@@ -91,21 +91,25 @@ async function refreshAccessToken() {
     return false;
   }
 }
-
 export async function api(path, options = {}) {
-  if (!getAccessToken()) await loginDemo();
-
   try {
     return await requestRaw(path, options);
   } catch (error) {
     if (error.status === 401) {
       const refreshed = await refreshAccessToken();
-      if (refreshed) return requestRaw(path, options);
+
+      if (refreshed) {
+        return requestRaw(path, options);
+      }
 
       clearTokens();
-      await loginDemo();
-      return requestRaw(path, options);
+
+      // Send the user back to login
+      if (window.location.pathname !== "/login") {
+        window.location.href = "/login";
+      }
     }
+
     throw error;
   }
 }
@@ -250,4 +254,53 @@ export async function loginUser(credentials) {
   saveTokens(data);
 
   return data;
+}
+export async function getAdminUsers(params = {}) {
+  const query = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (
+      value !== undefined &&
+      value !== null &&
+      value !== ""
+    ) {
+      query.set(key, value);
+    }
+  });
+
+  const data = await api(
+    `/admin/users/${
+      query.toString()
+        ? `?${query.toString()}`
+        : ""
+    }`
+  );
+
+  return data.results || data;
+}
+export async function getFeedback(params = {}) {
+  const query = new URLSearchParams();
+
+  Object.entries(params).forEach(([key, value]) => {
+    if (
+      value !== undefined &&
+      value !== null &&
+      value !== "" &&
+      value !== "all"
+    ) {
+      query.set(key, value);
+    }
+  });
+
+  const data = await api(
+    `/feedback/${query.toString() ? `?${query.toString()}` : ""}`
+  );
+
+  return data.results || data;
+}
+
+export async function deleteFeedback(id) {
+  return api(`/feedback/${id}/`, {
+    method: "DELETE",
+  });
 }

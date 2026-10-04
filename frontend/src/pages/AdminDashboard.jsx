@@ -1,3 +1,5 @@
+import { useEffect, useState } from "react";
+
 import {
   Users,
   CalendarDays,
@@ -10,84 +12,114 @@ import {
   ArrowUpRight,
 } from "lucide-react";
 
+import { getDashboard } from "../api";
+
 function AdminDashboard() {
+  const [dashboard, setDashboard] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    let mounted = true;
+
+    async function loadDashboard() {
+      try {
+        setLoading(true);
+        setError("");
+
+        const data = await getDashboard();
+
+        if (mounted) {
+          setDashboard(data);
+        }
+      } catch (err) {
+        console.error("Failed to load admin dashboard:", err);
+
+        if (mounted) {
+          setError(
+            err?.message || "Failed to load dashboard data."
+          );
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
+      }
+    }
+
+    loadDashboard();
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  const statistics = dashboard?.statistics || {};
+
+  const formatNumber = (value) => {
+    if (value === undefined || value === null) {
+      return "—";
+    }
+
+    return Number(value).toLocaleString();
+  };
+
   const stats = [
     {
       label: "Total Users",
-      value: "248",
-      change: "+12 this month",
+      value: formatNumber(statistics.total_users),
+      change: "Registered users",
       icon: Users,
     },
     {
       label: "Total Events",
-      value: "24",
-      change: "+4 this month",
+      value: formatNumber(statistics.total_events),
+      change: "Events in system",
       icon: CalendarDays,
     },
     {
       label: "Total Venues",
-      value: "12",
-      change: "+2 this month",
+      value: formatNumber(statistics.total_venues),
+      change: "Venues in system",
       icon: MapPin,
     },
     {
       label: "Registrations",
-      value: "1,284",
-      change: "+18% this month",
+      value: formatNumber(statistics.total_registrations),
+      change: "Total registrations",
       icon: ClipboardList,
     },
   ];
 
-  const recentUsers = [
-    {
-      name: "Aarav Sharma",
-      email: "aarav@college.com",
-      role: "Student",
-      status: "Active",
-    },
-    {
-      name: "Sneha Patil",
-      email: "sneha@college.com",
-      role: "Organizer",
-      status: "Active",
-    },
-    {
-      name: "Rahul Joshi",
-      email: "rahul@college.com",
-      role: "Student",
-      status: "Active",
-    },
-    {
-      name: "Kavya More",
-      email: "kavya@college.com",
-      role: "Student",
-      status: "Inactive",
-    },
-  ];
+  const upcomingEvents = dashboard?.upcoming_events || [];
 
-  const recentEvents = [
-    {
-      title: "Tech Fest 2026",
-      category: "Technical",
-      date: "18 Oct 2026",
-      registrations: "86 / 100",
-      status: "Open",
-    },
-    {
-      title: "Cultural Night",
-      category: "Cultural",
-      date: "24 Oct 2026",
-      registrations: "142 / 150",
-      status: "Almost Full",
-    },
-    {
-      title: "Sports Meet",
-      category: "Sports",
-      date: "02 Nov 2026",
-      registrations: "64 / 120",
-      status: "Open",
-    },
-  ];
+  const recentEvents = upcomingEvents
+    .slice(0, 3)
+    .map((event) => {
+      const startDate = event.start_date
+        ? new Date(event.start_date)
+        : null;
+
+      const formattedDate =
+        startDate && !Number.isNaN(startDate.getTime())
+          ? startDate.toLocaleDateString("en-IN", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            })
+          : "Date unavailable";
+
+      return {
+        id: event.id || event._id || event.pk || event.title,
+        title: event.title || "Untitled Event",
+        category: event.category || "Event",
+        date: formattedDate,
+        registrations: event.registration_count
+          ? `${event.registration_count} registrations`
+          : "Upcoming",
+        status: "Upcoming",
+      };
+    });
 
   return (
     <div className="admin-dashboard">
@@ -96,6 +128,7 @@ function AdminDashboard() {
       <div className="page-header">
         <div>
           <h1>Admin Dashboard</h1>
+
           <p className="page-description">
             Manage users, events, venues and system activity.
           </p>
@@ -107,13 +140,32 @@ function AdminDashboard() {
         </div>
       </div>
 
+      {/* Error */}
+      {error && (
+        <div
+          style={{
+            marginBottom: "20px",
+            padding: "12px 16px",
+            borderRadius: "10px",
+            background: "#fff1f2",
+            color: "#be123c",
+            border: "1px solid #fecdd3",
+          }}
+        >
+          {error}
+        </div>
+      )}
+
       {/* Statistics */}
       <div className="admin-stats-grid">
         {stats.map((stat) => {
           const Icon = stat.icon;
 
           return (
-            <div className="admin-stat-card" key={stat.label}>
+            <div
+              className="admin-stat-card"
+              key={stat.label}
+            >
               <div className="admin-stat-top">
                 <div className="admin-stat-icon">
                   <Icon size={20} />
@@ -123,7 +175,7 @@ function AdminDashboard() {
               </div>
 
               <div className="admin-stat-value">
-                {stat.value}
+                {loading ? "..." : stat.value}
               </div>
 
               <div className="admin-stat-label">
@@ -141,11 +193,15 @@ function AdminDashboard() {
       {/* Management cards */}
       <div className="admin-management-grid">
 
+        {/* User Management */}
         <div className="admin-panel">
           <div className="admin-panel-header">
             <div>
               <h2>User Management</h2>
-              <p>Manage registered users and organizers.</p>
+
+              <p>
+                Manage registered users and organizers.
+              </p>
             </div>
 
             <Users size={21} />
@@ -157,8 +213,17 @@ function AdminDashboard() {
             </div>
 
             <div>
-              <strong>236 Active Users</strong>
-              <span>Users currently active</span>
+              <strong>
+                {loading
+                  ? "..."
+                  : `${formatNumber(
+                      statistics.total_users
+                    )} Total Users`}
+              </strong>
+
+              <span>
+                Users currently registered
+              </span>
             </div>
           </div>
 
@@ -168,17 +233,30 @@ function AdminDashboard() {
             </div>
 
             <div>
-              <strong>12 Inactive Users</strong>
-              <span>Accounts currently inactive</span>
+              <strong>
+                {loading
+                  ? "..."
+                  : `${formatNumber(
+                      statistics.active_venues
+                    )} Active Venues`}
+              </strong>
+
+              <span>
+                Venues currently available
+              </span>
             </div>
           </div>
         </div>
 
+        {/* Event Management */}
         <div className="admin-panel">
           <div className="admin-panel-header">
             <div>
               <h2>Event Management</h2>
-              <p>Monitor events and registrations.</p>
+
+              <p>
+                Monitor events and registrations.
+              </p>
             </div>
 
             <CalendarDays size={21} />
@@ -190,8 +268,17 @@ function AdminDashboard() {
             </div>
 
             <div>
-              <strong>18 Upcoming Events</strong>
-              <span>Currently scheduled events</span>
+              <strong>
+                {loading
+                  ? "..."
+                  : `${formatNumber(
+                      statistics.upcoming_events
+                    )} Upcoming Events`}
+              </strong>
+
+              <span>
+                Currently scheduled events
+              </span>
             </div>
           </div>
 
@@ -201,8 +288,17 @@ function AdminDashboard() {
             </div>
 
             <div>
-              <strong>6 Pending Events</strong>
-              <span>Waiting for approval</span>
+              <strong>
+                {loading
+                  ? "..."
+                  : `${formatNumber(
+                      statistics.my_registrations
+                    )} My Registrations`}
+              </strong>
+
+              <span>
+                Registrations for current account
+              </span>
             </div>
           </div>
         </div>
@@ -218,10 +314,16 @@ function AdminDashboard() {
           <div className="admin-table-header">
             <div>
               <h2>Recent Users</h2>
-              <p>Recently registered users.</p>
+
+              <p>
+                User information will be connected next.
+              </p>
             </div>
 
-            <button type="button" className="admin-view-button">
+            <button
+              type="button"
+              className="admin-view-button"
+            >
               View All
               <ArrowUpRight size={15} />
             </button>
@@ -235,37 +337,35 @@ function AdminDashboard() {
               <span>Status</span>
             </div>
 
-            {recentUsers.map((user) => (
-              <div
-                className="admin-table-row"
-                key={user.email}
-              >
-                <div className="admin-user-cell">
-                  <div className="admin-user-avatar">
-                    {user.name.charAt(0)}
-                  </div>
-
-                  <div>
-                    <strong>{user.name}</strong>
-                    <span>{user.email}</span>
-                  </div>
+            <div className="admin-table-row">
+              <div className="admin-user-cell">
+                <div className="admin-user-avatar">
+                  U
                 </div>
 
-                <span className="admin-role">
-                  {user.role}
-                </span>
+                <div>
+                  <strong>
+                    {loading
+                      ? "Loading..."
+                      : `${formatNumber(
+                          statistics.total_users
+                        )} users`}
+                  </strong>
 
-                <span
-                  className={`admin-status ${
-                    user.status === "Active"
-                      ? "active"
-                      : "inactive"
-                  }`}
-                >
-                  {user.status}
-                </span>
+                  <span>
+                    Total registered accounts
+                  </span>
+                </div>
               </div>
-            ))}
+
+              <span className="admin-role">
+                Users
+              </span>
+
+              <span className="admin-status active">
+                Active
+              </span>
+            </div>
 
           </div>
         </div>
@@ -276,10 +376,16 @@ function AdminDashboard() {
           <div className="admin-table-header">
             <div>
               <h2>Recent Events</h2>
-              <p>Latest events in the system.</p>
+
+              <p>
+                Upcoming events from the system.
+              </p>
             </div>
 
-            <button type="button" className="admin-view-button">
+            <button
+              type="button"
+              className="admin-view-button"
+            >
               View All
               <ArrowUpRight size={15} />
             </button>
@@ -287,11 +393,63 @@ function AdminDashboard() {
 
           <div className="admin-event-list">
 
-            {recentEvents.map((event) => (
-              <div
-                className="admin-event-row"
-                key={event.title}
-              >
+            {loading ? (
+              <div className="admin-event-row">
+                <div className="admin-event-info">
+                  <div className="admin-event-icon">
+                    <CalendarDays size={18} />
+                  </div>
+
+                  <div>
+                    <strong>
+                      Loading events...
+                    </strong>
+
+                    <span>
+                      Please wait
+                    </span>
+                  </div>
+                </div>
+              </div>
+            ) : recentEvents.length > 0 ? (
+              recentEvents.map((event) => (
+                <div
+                  className="admin-event-row"
+                  key={event.id}
+                >
+                  <div className="admin-event-info">
+
+                    <div className="admin-event-icon">
+                      <CalendarDays size={18} />
+                    </div>
+
+                    <div>
+                      <strong>
+                        {event.title}
+                      </strong>
+
+                      <span>
+                        {event.category} · {event.date}
+                      </span>
+                    </div>
+
+                  </div>
+
+                  <div className="admin-event-meta">
+
+                    <strong>
+                      {event.registrations}
+                    </strong>
+
+                    <span className="admin-event-status">
+                      {event.status}
+                    </span>
+
+                  </div>
+                </div>
+              ))
+            ) : (
+              <div className="admin-event-row">
                 <div className="admin-event-info">
 
                   <div className="admin-event-icon">
@@ -299,32 +457,18 @@ function AdminDashboard() {
                   </div>
 
                   <div>
-                    <strong>{event.title}</strong>
+                    <strong>
+                      No upcoming events
+                    </strong>
 
                     <span>
-                      {event.category} · {event.date}
+                      No events are currently scheduled.
                     </span>
                   </div>
 
                 </div>
-
-                <div className="admin-event-meta">
-                  <strong>
-                    {event.registrations}
-                  </strong>
-
-                  <span
-                    className={`admin-event-status ${
-                      event.status === "Almost Full"
-                        ? "warning"
-                        : ""
-                    }`}
-                  >
-                    {event.status}
-                  </span>
-                </div>
               </div>
-            ))}
+            )}
 
           </div>
         </div>
