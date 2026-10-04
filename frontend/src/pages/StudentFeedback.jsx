@@ -7,10 +7,10 @@ import {
   CalendarDays,
   MapPin,
 } from "lucide-react";
-import {
   createFeedback,
   getFeedback,
   getRegistrations,
+  createPlatformFeedback,
 } from "../api";
 
 const StudentFeedback = () => {
@@ -20,8 +20,19 @@ const StudentFeedback = () => {
   const [rating, setRating] = useState(0);
   const [hoverRating, setHoverRating] = useState(0);
 
+  const [ratingContent, setRatingContent] = useState(0);
+  const [ratingVenue, setRatingVenue] = useState(0);
+  const [ratingValue, setRatingValue] = useState(0);
+  const [ratingOrganization, setRatingOrganization] = useState(0);
+
   const [comment, setComment] = useState("");
-  const [suggestions, setSuggestions] = useState("");
+
+  const [activeTab, setActiveTab] = useState("events");
+  
+  const [platformType, setPlatformType] = useState("suggestion");
+  const [platformTitle, setPlatformTitle] = useState("");
+  const [platformDesc, setPlatformDesc] = useState("");
+  const [platformFile, setPlatformFile] = useState(null);
 
   const [submitted, setSubmitted] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -106,8 +117,11 @@ const StudentFeedback = () => {
     setSelectedEvent(event);
     setRating(0);
     setHoverRating(0);
+    setRatingContent(0);
+    setRatingVenue(0);
+    setRatingValue(0);
+    setRatingOrganization(0);
     setComment("");
-    setSuggestions("");
     setSubmitted(false);
   };
 
@@ -115,8 +129,11 @@ const StudentFeedback = () => {
     setSelectedEvent(null);
     setRating(0);
     setHoverRating(0);
+    setRatingContent(0);
+    setRatingVenue(0);
+    setRatingValue(0);
+    setRatingOrganization(0);
     setComment("");
-    setSuggestions("");
     setSubmitted(false);
   };
 
@@ -129,6 +146,10 @@ const StudentFeedback = () => {
     await createFeedback({
       event: selectedEvent.id,
       rating: rating,
+      rating_content: ratingContent || null,
+      rating_venue: ratingVenue || null,
+      rating_value: ratingValue || null,
+      rating_organization: ratingOrganization || null,
       comment: comment,
     });
 
@@ -158,6 +179,30 @@ const StudentFeedback = () => {
     alert(error.message || "Failed to submit feedback.");
   }
 };
+
+  const handlePlatformSubmit = async (e) => {
+    e.preventDefault();
+    if (!platformTitle || !platformDesc) return;
+    
+    try {
+      const payload = new FormData();
+      payload.append("type", platformType);
+      payload.append("title", platformTitle);
+      payload.append("description", platformDesc);
+      if (platformFile) {
+        payload.append("screenshot", platformFile);
+      }
+      
+      await createPlatformFeedback(payload);
+      
+      alert("Feedback submitted successfully. Thank you!");
+      setPlatformTitle("");
+      setPlatformDesc("");
+      setPlatformFile(null);
+    } catch (err) {
+      alert("Failed to submit platform feedback.");
+    }
+  };
 
   return (
     <section className="student-feedback-page">
@@ -246,8 +291,27 @@ const StudentFeedback = () => {
 
       </div>
 
-      {/* PENDING FEEDBACK */}
-      <div className="student-card">
+      <div className="student-tabs" style={{ marginTop: '2rem', borderBottom: '1px solid var(--border)' }}>
+        <button
+          type="button"
+          className={activeTab === "events" ? "student-tab active" : "student-tab"}
+          onClick={() => setActiveTab("events")}
+        >
+          Event Feedback
+        </button>
+        <button
+          type="button"
+          className={activeTab === "platform" ? "student-tab active" : "student-tab"}
+          onClick={() => setActiveTab("platform")}
+        >
+          Platform Suggestions
+        </button>
+      </div>
+
+      {activeTab === "events" && (
+        <>
+          {/* PENDING FEEDBACK */}
+          <div className="student-card" style={{ marginTop: '2rem' }}>
 
         <div className="student-card-header">
           <div>
@@ -517,25 +581,51 @@ const StudentFeedback = () => {
 
                   </div>
 
-                  {/* SUGGESTIONS */}
-                  <div className="student-feedback-field">
-
-                    <label htmlFor="feedback-suggestions">
-                      Suggestions for improvement
-                    </label>
-
-                    <textarea
-                      id="feedback-suggestions"
-                      value={suggestions}
-                      onChange={(e) =>
-                        setSuggestions(
-                          e.target.value
-                        )
-                      }
-                      placeholder="How could future events be improved?"
-                      rows={3}
-                    />
-
+                  <div className="student-feedback-field" style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '15px' }}>
+                    <div>
+                      <label>Event Content</label>
+                      <select value={ratingContent} onChange={(e) => setRatingContent(Number(e.target.value))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                        <option value={0}>Rate (Optional)</option>
+                        <option value={5}>5 - Excellent</option>
+                        <option value={4}>4 - Very Good</option>
+                        <option value={3}>3 - Good</option>
+                        <option value={2}>2 - Fair</option>
+                        <option value={1}>1 - Poor</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label>Venue Quality</label>
+                      <select value={ratingVenue} onChange={(e) => setRatingVenue(Number(e.target.value))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                        <option value={0}>Rate (Optional)</option>
+                        <option value={5}>5 - Excellent</option>
+                        <option value={4}>4 - Very Good</option>
+                        <option value={3}>3 - Good</option>
+                        <option value={2}>2 - Fair</option>
+                        <option value={1}>1 - Poor</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label>Value for Money/Time</label>
+                      <select value={ratingValue} onChange={(e) => setRatingValue(Number(e.target.value))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                        <option value={0}>Rate (Optional)</option>
+                        <option value={5}>5 - Excellent</option>
+                        <option value={4}>4 - Very Good</option>
+                        <option value={3}>3 - Good</option>
+                        <option value={2}>2 - Fair</option>
+                        <option value={1}>1 - Poor</option>
+                      </select>
+                    </div>
+                    <div>
+                      <label>Organization</label>
+                      <select value={ratingOrganization} onChange={(e) => setRatingOrganization(Number(e.target.value))} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                        <option value={0}>Rate (Optional)</option>
+                        <option value={5}>5 - Excellent</option>
+                        <option value={4}>4 - Very Good</option>
+                        <option value={3}>3 - Good</option>
+                        <option value={2}>2 - Fair</option>
+                        <option value={1}>1 - Poor</option>
+                      </select>
+                    </div>
                   </div>
 
                   <div className="modal-actions">
@@ -590,6 +680,45 @@ const StudentFeedback = () => {
             )}
 
           </div>
+        </div>
+      )}
+
+      {activeTab === "platform" && (
+        <div className="student-card" style={{ marginTop: '2rem' }}>
+          <div className="student-card-header">
+            <div>
+              <h2>Submit Platform Feedback</h2>
+              <p>Found a bug or have a feature suggestion? Let the admins know!</p>
+            </div>
+          </div>
+          
+          <form onSubmit={handlePlatformSubmit} style={{ padding: '20px', display: 'flex', flexDirection: 'column', gap: '15px' }}>
+            <div className="student-feedback-field">
+              <label>Feedback Type</label>
+              <select value={platformType} onChange={(e) => setPlatformType(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)' }}>
+                <option value="suggestion">Suggestion / Feature Request</option>
+                <option value="bug">Bug Report</option>
+                <option value="complaint">Complaint</option>
+              </select>
+            </div>
+            <div className="student-feedback-field">
+              <label>Title</label>
+              <input type="text" value={platformTitle} onChange={(e) => setPlatformTitle(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)' }} placeholder="Brief summary" required />
+            </div>
+            <div className="student-feedback-field">
+              <label>Description</label>
+              <textarea value={platformDesc} onChange={(e) => setPlatformDesc(e.target.value)} style={{ width: '100%', padding: '10px', borderRadius: '8px', border: '1px solid var(--border)' }} placeholder="Please provide details..." rows={4} required />
+            </div>
+            <div className="student-feedback-field">
+              <label>Screenshot (Optional)</label>
+              <input type="file" accept="image/*" onChange={(e) => setPlatformFile(e.target.files[0])} style={{ padding: '5px' }} />
+            </div>
+            <div style={{ alignSelf: 'flex-start', marginTop: '10px' }}>
+              <button type="submit" className="btn-primary" disabled={!platformTitle || !platformDesc}>
+                Submit to Admin
+              </button>
+            </div>
+          </form>
         </div>
       )}
 

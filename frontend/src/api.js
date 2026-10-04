@@ -227,6 +227,25 @@ export async function createFeedback(payload) {
   });
 }
 
+export async function createPlatformFeedback(payload) {
+  // Use FormData if there is a screenshot
+  if (payload instanceof FormData) {
+    return api("/platform-feedback/", {
+      method: "POST",
+      body: payload,
+    });
+  }
+  return api("/platform-feedback/", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
+export async function getPlatformFeedbacks() {
+  const data = await api("/platform-feedback/");
+  return data.results || data;
+}
+
 
 export async function checkInRegistration(id) {
   return api(`/registrations/${id}/check-in/`, { method: "POST" });

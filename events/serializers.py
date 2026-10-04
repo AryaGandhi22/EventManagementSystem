@@ -653,6 +653,10 @@ class FeedbackSerializer(serializers.ModelSerializer):
             "event",
             "event_details",
             "rating",
+            "rating_content",
+            "rating_venue",
+            "rating_value",
+            "rating_organization",
             "comment",
             "created_at",
         ]
@@ -724,6 +728,50 @@ class FeedbackSerializer(serializers.ModelSerializer):
         return Feedback.objects.create(
             user=self.context["request"].user,
             **validated_data,
+        )
+
+    def to_representation(self, instance):
+        data = super().to_representation(instance)
+        return stringify_object_ids(data)
+
+class PlatformFeedbackSerializer(serializers.ModelSerializer):
+    id = serializers.CharField(read_only=True)
+    user = UserSummarySerializer(read_only=True)
+    user_id = serializers.PrimaryKeyRelatedField(
+        source="user",
+        read_only=True,
+    )
+    
+    class Meta:
+        model = PlatformFeedback
+        fields = [
+            "id",
+            "user",
+            "user_id",
+            "type",
+            "status",
+            "title",
+            "description",
+            "screenshot",
+            "admin_notes",
+            "created_at",
+            "resolved_at",
+        ]
+        read_only_fields = [
+            "id",
+            "user",
+            "user_id",
+            "status",
+            "admin_notes",
+            "created_at",
+            "resolved_at",
+        ]
+
+    def create(self, validated_data):
+        request = self.context.get("request")
+        return PlatformFeedback.objects.create(
+            user=request.user,
+            **validated_data
         )
 
     def to_representation(self, instance):

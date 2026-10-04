@@ -22,7 +22,6 @@ import "./App.css";
 
 import Dashboard from "./pages/Dashboard";
 import Events from "./pages/Events";
-import Registrations from "./pages/Registrations";
 import Participants from "./pages/Participants";
 import Venues from "./pages/Venues";
 import Reports from "./pages/Reports";
@@ -345,14 +344,6 @@ function App() {
       >
         <CalendarDays size={19} />
         <span>Events</span>
-      </NavLink>
-
-      <NavLink
-        to="/registrations"
-        className="nav-item"
-      >
-        <ClipboardList size={19} />
-        <span>My Registrations</span>
       </NavLink>
 
       <NavLink

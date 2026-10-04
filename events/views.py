@@ -12,7 +12,7 @@ import csv
 
 from rest_framework_simplejwt.tokens import RefreshToken
 
-from .models import Event, Feedback, Registration, UserProfile, Venue, Notification
+from .models import Event, Feedback, Registration, UserProfile, Venue, Notification, PlatformFeedback
 
 from .serializers import (
     EventSerializer,
@@ -25,6 +25,7 @@ from .serializers import (
     UserSummarySerializer,
     VenueSerializer,
     NotificationSerializer,
+    PlatformFeedbackSerializer,
 )
 
 
@@ -440,6 +441,27 @@ class FeedbackDetailView(
         return queryset.filter(
             user=self.request.user
         )
+
+
+class PlatformFeedbackListCreateView(generics.ListCreateAPIView):
+    serializer_class = PlatformFeedbackSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        queryset = PlatformFeedback.objects.select_related("user")
+        if self.request.user.is_staff:
+            return queryset
+        return queryset.filter(user=self.request.user)
+
+class PlatformFeedbackDetailView(generics.RetrieveUpdateDestroyAPIView):
+    serializer_class = PlatformFeedbackSerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        queryset = PlatformFeedback.objects.select_related("user")
+        if self.request.user.is_staff:
+            return queryset
+        return queryset.filter(user=self.request.user)
 
 
 # ============================================================
