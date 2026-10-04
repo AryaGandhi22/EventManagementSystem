@@ -763,3 +763,11 @@ class UserLoginSerializer(serializers.Serializer):
         attrs["role"] = role
 
         return attrs
+    
+class StudentReportSerializer(serializers.Serializer):
+    total_registrations = serializers.IntegerField()
+    registered = serializers.IntegerField()
+    waitlisted = serializers.IntegerField()
+    cancelled = serializers.IntegerField()
+    checked_in = serializers.IntegerField()
+    feedback_given = serializers.IntegerField()

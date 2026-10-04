@@ -18,7 +18,7 @@ const StudentRecommendations = () => {
     try {
       setLoading(true);
 
-      const response = await getEvents();
+      const response = await getEvents({ upcoming: true });
 
       const data = Array.isArray(response)
         ? response

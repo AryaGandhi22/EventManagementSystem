@@ -25,6 +25,8 @@ from .views import (
     dashboard_view,
     health_view,
     reports_view,
+    student_dashboard_view,
+    student_reports_view,
 )
 
 
@@ -106,6 +108,22 @@ urlpatterns = [
         ParticipantListView.as_view(),
         name="participants",
     ),
+    
+    # ========================================================
+# STUDENT
+# ========================================================
+
+path(
+    "student/dashboard/",
+    student_dashboard_view,
+    name="student-dashboard",
+),
+
+path(
+    "student/reports/",
+    student_reports_view,
+    name="student-reports",
+),
 
     # ========================================================
     # REGISTRATIONS

@@ -28,6 +28,20 @@ from .serializers import (
 # EVENTS
 # ============================================================
 
+def is_admin_user(user):
+    return (
+        user.is_staff
+        or user.groups.filter(name__iexact="Admin").exists()
+    )
+
+
+def is_organizer_user(user):
+    return user.groups.filter(name__iexact="Organizer").exists()
+
+
+def is_student_user(user):
+    return user.groups.filter(name__iexact="Student").exists()
+
 class EventListCreateView(generics.ListCreateAPIView):
     serializer_class = EventSerializer
     permission_classes = [IsAuthenticated]
@@ -66,7 +80,21 @@ class EventListCreateView(generics.ListCreateAPIView):
 
         return queryset
 
+    def perform_create(self, serializer):
+        user = self.request.user
 
+        if not (
+            user.is_staff
+            or user.groups.filter(name__iexact="Admin").exists()
+            or user.groups.filter(name__iexact="Organizer").exists()
+        ):
+            from rest_framework.exceptions import PermissionDenied
+
+            raise PermissionDenied(
+                "Only organizers and admins can create events."
+            )
+
+        serializer.save()
 class EventDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = EventSerializer
     permission_classes = [IsAuthenticated]
@@ -730,6 +758,80 @@ def dashboard_view(request):
             ).data,
         }
     )
+    
+# ============================================================
+# STUDENT DASHBOARD
+# ============================================================
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def student_dashboard_view(request):
+    user = request.user
+    now = timezone.now()
+
+    registrations = Registration.objects.filter(
+        user=user
+    )
+
+    registered = registrations.filter(
+        status="registered"
+    ).count()
+
+    waitlisted = registrations.filter(
+        status="waitlisted"
+    ).count()
+
+    cancelled = registrations.filter(
+        status="cancelled"
+    ).count()
+
+    checked_in = registrations.filter(
+        status="registered",
+        checked_in=True,
+    ).count()
+
+    upcoming_events = Event.objects.filter(
+        registrations__user=user,
+        registrations__status__in=[
+            "registered",
+            "waitlisted",
+        ],
+        start_date__gte=now,
+    ).select_related(
+        "organizer",
+        "venue",
+    ).distinct().order_by(
+        "start_date"
+    )[:5]
+
+    recommended_events = Event.objects.filter(
+        start_date__gte=now
+    ).exclude(
+        registrations__user=user
+    ).select_related(
+        "organizer",
+        "venue",
+    ).order_by(
+        "start_date"
+    )[:5]
+
+    return Response({
+        "statistics": {
+            "registered": registered,
+            "waitlisted": waitlisted,
+            "cancelled": cancelled,
+            "checked_in": checked_in,
+        },
+        "upcoming_events": EventSerializer(
+            upcoming_events,
+            many=True,
+            context={"request": request},
+        ).data,
+        "recommended_events": EventSerializer(
+            recommended_events,
+            many=True,
+            context={"request": request},
+        ).data,
+    })
 
 
 # ============================================================
@@ -839,6 +941,50 @@ def reports_view(request):
             "event_performance": event_rows,
         }
     )
+    
+# ============================================================
+# STUDENT REPORTS
+# ============================================================
+@api_view(["GET"])
+@permission_classes([IsAuthenticated])
+def student_reports_view(request):
+    user = request.user
+
+    registrations = Registration.objects.filter(
+        user=user
+    )
+
+    total_registrations = registrations.count()
+
+    registered = registrations.filter(
+        status="registered"
+    ).count()
+
+    waitlisted = registrations.filter(
+        status="waitlisted"
+    ).count()
+
+    cancelled = registrations.filter(
+        status="cancelled"
+    ).count()
+
+    checked_in = registrations.filter(
+        status="registered",
+        checked_in=True,
+    ).count()
+
+    feedback_given = Feedback.objects.filter(
+        user=user
+    ).count()
+
+    return Response({
+        "total_registrations": total_registrations,
+        "registered": registered,
+        "waitlisted": waitlisted,
+        "cancelled": cancelled,
+        "checked_in": checked_in,
+        "feedback_given": feedback_given,
+    })
 
 
 # ============================================================

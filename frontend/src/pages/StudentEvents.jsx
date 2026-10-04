@@ -79,11 +79,11 @@ const [registrationError, setRegistrationError] =
 
   const getEventDate = (event) => {
     const rawDate =
-      event.start_time ||
-      event.start ||
-      event.date ||
-      event.event_date;
-
+  event.start_date ||
+  event.start_time ||
+  event.start ||
+  event.date ||
+  event.event_date;
     if (!rawDate) return null;
 
     const date = new Date(rawDate);

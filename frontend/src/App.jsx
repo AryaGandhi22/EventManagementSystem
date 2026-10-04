@@ -199,14 +199,6 @@ function App() {
       </NavLink>
 
       <NavLink
-        to="/admin/registrations"
-        className="nav-item"
-      >
-        <ClipboardList size={19} />
-        <span>Registrations</span>
-      </NavLink>
-
-      <NavLink
         to="/admin/feedback"
         className="nav-item"
       >

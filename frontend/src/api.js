@@ -181,13 +181,21 @@ export async function getRegistrations(params = {}) {
 export async function registerForEvent(eventId) {
   return api("/registrations/", {
     method: "POST",
-    body: JSON.stringify({ event: eventId }),
+    body: JSON.stringify({ event_id: eventId }),
   });
 }
 
 export async function cancelRegistration(id) {
   return api(`/registrations/${id}/`, { method: "DELETE" });
 }
+
+export async function createFeedback(payload) {
+  return api("/feedback/", {
+    method: "POST",
+    body: JSON.stringify(payload),
+  });
+}
+
 
 export async function checkInRegistration(id) {
   return api(`/registrations/${id}/check-in/`, { method: "POST" });

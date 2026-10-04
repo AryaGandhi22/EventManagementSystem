@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Star,
   Send,
@@ -7,6 +7,11 @@ import {
   CalendarDays,
   MapPin,
 } from "lucide-react";
+import {
+  createFeedback,
+  getFeedback,
+  getRegistrations,
+} from "../api";
 
 const StudentFeedback = () => {
   const [selectedEvent, setSelectedEvent] =
@@ -19,33 +24,83 @@ const StudentFeedback = () => {
   const [suggestions, setSuggestions] = useState("");
 
   const [submitted, setSubmitted] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   /*
    * Temporary frontend data.
    * This will later come from the feedback API
    * and the student's completed registrations.
    */
-  const [pendingEvents] = useState([
-    {
-      id: 1,
-      title: "Tech Fest 2026",
-      category: "Technical",
-      date: "09 Oct 2026",
-      venue: "Auditorium Hall",
-    },
-  ]);
+  const [pendingEvents, setPendingEvents] = useState([]);
 
-  const [feedbackHistory, setFeedbackHistory] =
-    useState([
-      {
-        id: 1,
-        event: "Annual Cultural Fest",
-        rating: 5,
-        comment:
-          "Excellent event with great organization.",
-        date: "18 Sep 2026",
-      },
-    ]);
+  const [feedbackHistory, setFeedbackHistory] = useState([]);
+
+    useEffect(() => {
+  const loadFeedbackData = async () => {
+    try {
+      const [registrations, feedback] = await Promise.all([
+        getRegistrations(),
+        getFeedback(),
+      ]);
+
+      const submittedEventIds = new Set(
+        feedback.map((item) => String(item.event))
+      );
+
+      const pending = registrations
+        .filter(
+          (registration) =>
+            registration.status === "registered" &&
+            registration.event_details &&
+            !submittedEventIds.has(String(registration.event))
+        )
+        .map((registration) => {
+          const event = registration.event_details;
+
+          return {
+            id: registration.event,
+            title: event.title,
+            category: event.category,
+            date: event.start_date
+              ? new Date(event.start_date).toLocaleDateString("en-IN", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                })
+              : "Date not specified",
+            venue:
+              event.venue?.name ||
+              "Venue not specified",
+          };
+        });
+
+      setPendingEvents(pending);
+
+      setFeedbackHistory(
+        feedback.map((item) => ({
+          id: item.id,
+          event: item.event_details?.title || "Event",
+          rating: item.rating,
+          comment: item.comment,
+          date: item.created_at
+            ? new Date(item.created_at).toLocaleDateString("en-IN", {
+                day: "2-digit",
+                month: "short",
+                year: "numeric",
+              })
+            : "Date not specified",
+        }))
+      );
+
+      setLoading(false);
+    } catch (error) {
+      console.error("Failed to load feedback data:", error);
+      setLoading(false);
+    }
+  };
+
+  loadFeedbackData();
+}, []);
 
   const openFeedback = (event) => {
     setSelectedEvent(event);
@@ -65,16 +120,23 @@ const StudentFeedback = () => {
     setSubmitted(false);
   };
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
+  const handleSubmit = async (e) => {
+  e.preventDefault();
 
-    if (!rating) return;
+  if (!rating || !selectedEvent?.id) return;
+
+  try {
+    await createFeedback({
+      event: selectedEvent.id,
+      rating: rating,
+      comment: comment,
+    });
 
     const newFeedback = {
       id: Date.now(),
       event: selectedEvent.title,
-      rating,
-      comment,
+      rating: rating,
+      comment: comment,
       date: new Date().toLocaleDateString(
         "en-IN",
         {
@@ -91,7 +153,11 @@ const StudentFeedback = () => {
     ]);
 
     setSubmitted(true);
-  };
+  } catch (error) {
+    console.error("Feedback submission failed:", error);
+    alert(error.message || "Failed to submit feedback.");
+  }
+};
 
   return (
     <section className="student-feedback-page">
