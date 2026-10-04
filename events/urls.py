@@ -11,6 +11,7 @@ from .views import (
     CheckInView,
     EventDetailView,
     EventListCreateView,
+    EventAttendeeListView,
     FeedbackDetailView,
     FeedbackListCreateView,
     MeView,
@@ -233,6 +234,12 @@ path(
     # ========================================================
 
     # Keep the dynamic event route LAST.
+    path(
+        "<str:event_id>/attendees/",
+        EventAttendeeListView.as_view(),
+        name="event-attendees",
+    ),
+
     path(
         "",
         EventListCreateView.as_view(),

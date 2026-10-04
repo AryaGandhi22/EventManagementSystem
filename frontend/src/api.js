@@ -208,6 +208,18 @@ export async function cancelRegistration(id) {
   return api(`/registrations/${id}/`, { method: "DELETE" });
 }
 
+export async function toggleConnectOptIn(id, optIn) {
+  return api(`/registrations/${id}/`, {
+    method: "PATCH",
+    body: JSON.stringify({ connect_opt_in: optIn })
+  });
+}
+
+export async function getEventAttendees(eventId) {
+  const data = await api(`/events/${eventId}/attendees/`);
+  return data.results || data;
+}
+
 export async function createFeedback(payload) {
   return api("/feedback/", {
     method: "POST",

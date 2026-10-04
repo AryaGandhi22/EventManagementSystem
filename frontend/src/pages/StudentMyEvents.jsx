@@ -7,8 +7,10 @@ import {
   CheckCircle2,
   AlertCircle,
   Ban,
+  Users,
+  UserPlus,
 } from "lucide-react";
-import { getRegistrations, cancelRegistration } from "../api";
+import { getRegistrations, cancelRegistration, toggleConnectOptIn, getEventAttendees } from "../api";
 import { QRCodeSVG } from "qrcode.react";
 
 const StudentMyEvents = () => {
@@ -22,6 +24,10 @@ const StudentMyEvents = () => {
   const [cancelling, setCancelling] = useState(false);
 
   const [message, setMessage] = useState("");
+
+  const [attendeesModal, setAttendeesModal] = useState(null);
+  const [attendeesList, setAttendeesList] = useState([]);
+  const [loadingAttendees, setLoadingAttendees] = useState(false);
 
   const loadRegistrations = async () => {
     try {
@@ -176,6 +182,31 @@ const StudentMyEvents = () => {
       );
     } finally {
       setCancelling(false);
+    }
+  };
+
+  const handleToggleOptIn = async (registration, e) => {
+    e.stopPropagation();
+    try {
+      const newOptIn = !registration.connect_opt_in;
+      await toggleConnectOptIn(registration.id, newOptIn);
+      setRegistrations(registrations.map(r => r.id === registration.id ? { ...r, connect_opt_in: newOptIn } : r));
+    } catch (err) {
+      setError(err?.data?.detail || "Unable to update networking preference.");
+    }
+  };
+
+  const viewAttendees = async (event, e) => {
+    if (e) e.stopPropagation();
+    setAttendeesModal(event);
+    setLoadingAttendees(true);
+    try {
+      const list = await getEventAttendees(event.id);
+      setAttendeesList(list);
+    } catch (err) {
+      setError("Unable to fetch attendees.");
+    } finally {
+      setLoadingAttendees(false);
     }
   };
 
@@ -471,22 +502,46 @@ const StudentMyEvents = () => {
                             level={"M"}
                             includeMargin={false}
                           />
-                          <div style={{ display: 'flex', flexDirection: 'column' }}>
-                            <span style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text)' }}>Check-in Pass</span>
-                            <span style={{ fontSize: '0.75rem', color: 'var(--text-light)' }}>Show this at the entrance</span>
+                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
+                            <div>
+                              <span style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text)', display: 'block' }}>Check-in Pass</span>
+                              <span style={{ fontSize: '0.75rem', color: 'var(--text-light)' }}>Show this at the entrance</span>
+                            </div>
+                            
+                            <label className="networking-toggle" style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.8rem', color: 'var(--primary)' }}>
+                              <input 
+                                type="checkbox" 
+                                checked={registration.connect_opt_in} 
+                                onChange={(e) => handleToggleOptIn(registration, e)} 
+                                style={{ cursor: 'pointer' }}
+                              />
+                              Opt-in to Networking
+                            </label>
                           </div>
                         </div>
-                        <button
-                          type="button"
-                          className="btn-danger-outline"
-                          onClick={() =>
-                            setCancelTarget(
-                              registration
-                            )
-                          }
-                        >
-                          Cancel Registration
-                        </button>
+                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                          {registration.connect_opt_in && (
+                            <button
+                              type="button"
+                              className="btn-secondary"
+                              onClick={(e) => viewAttendees(registration.event_details || { id: registration.event_id, title: registration.event }, e)}
+                              style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', padding: '6px 12px' }}
+                            >
+                              <Users size={14} /> Fellow Attendees
+                            </button>
+                          )}
+                          <button
+                            type="button"
+                            className="btn-danger-outline"
+                            onClick={() =>
+                              setCancelTarget(
+                                registration
+                              )
+                            }
+                          >
+                            Cancel Registration
+                          </button>
+                        </div>
                       </>
                     )}
 
@@ -604,6 +659,70 @@ const StudentMyEvents = () => {
 
             </div>
 
+          </div>
+        </div>
+      )}
+
+      {attendeesModal && (
+        <div className="modal-overlay" onClick={() => setAttendeesModal(null)}>
+          <div className="modal-container" onClick={(e) => e.stopPropagation()} style={{ maxWidth: '600px', width: '90%' }}>
+            <div className="modal-header">
+              <div>
+                <h2>Networking: {attendeesModal.title || "Fellow Attendees"}</h2>
+                <p>Connect with other students attending this event.</p>
+              </div>
+              <button type="button" className="modal-close" onClick={() => setAttendeesModal(null)}>
+                <X size={22} />
+              </button>
+            </div>
+            
+            <div className="modal-content" style={{ maxHeight: '400px', overflowY: 'auto', padding: '20px' }}>
+              {loadingAttendees ? (
+                <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-light)' }}>
+                  <Clock3 size={24} style={{ marginBottom: '10px' }} />
+                  <p>Finding attendees...</p>
+                </div>
+              ) : attendeesList.length === 0 ? (
+                <div style={{ textAlign: 'center', padding: '40px 0', color: 'var(--text-light)' }}>
+                  <Users size={32} style={{ marginBottom: '10px', opacity: 0.5 }} />
+                  <p>No other attendees have opted into networking for this event yet.</p>
+                  <p style={{ fontSize: '0.85rem', marginTop: '10px' }}>Check back later as more students register!</p>
+                </div>
+              ) : (
+                <div style={{ display: 'flex', flexDirection: 'column', gap: '15px' }}>
+                  {attendeesList.map(attendee => (
+                    <div key={attendee.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', padding: '15px', border: '1px solid var(--border)', borderRadius: '8px', background: 'var(--bg-secondary)' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
+                        <div style={{ width: '40px', height: '40px', borderRadius: '50%', background: 'var(--primary-light)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontWeight: 'bold' }}>
+                          {attendee.name.charAt(0).toUpperCase()}
+                        </div>
+                        <div>
+                          <h4 style={{ margin: '0 0 5px 0', fontSize: '1rem', color: 'var(--text)' }}>{attendee.name}</h4>
+                          <div style={{ display: 'flex', gap: '5px', flexWrap: 'wrap' }}>
+                            {attendee.interests && attendee.interests.length > 0 ? (
+                              attendee.interests.slice(0, 3).map((interest, i) => (
+                                <span key={i} style={{ fontSize: '0.7rem', padding: '2px 8px', background: 'var(--bg-primary)', border: '1px solid var(--border)', borderRadius: '10px', color: 'var(--text-light)' }}>
+                                  {interest}
+                                </span>
+                              ))
+                            ) : (
+                              <span style={{ fontSize: '0.75rem', color: 'var(--text-light)' }}>Student</span>
+                            )}
+                          </div>
+                        </div>
+                      </div>
+                      <a 
+                        href={`mailto:${attendee.email}?subject=Hello from ${attendeesModal.title}`}
+                        className="btn-primary" 
+                        style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', padding: '8px 12px', textDecoration: 'none' }}
+                      >
+                        <UserPlus size={14} /> Connect
+                      </a>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
       )}

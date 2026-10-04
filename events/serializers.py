@@ -98,6 +98,8 @@ class UserSummarySerializer(serializers.ModelSerializer):
         ]
 
     def _profile(self, obj):
+        if hasattr(obj, 'profile'):
+            return obj.profile
         profile, _ = UserProfile.objects.get_or_create(user=obj)
         return profile
 
@@ -111,18 +113,18 @@ class UserSummarySerializer(serializers.ModelSerializer):
         return self._profile(obj).interests
 
     def get_events_attended(self, obj):
-        return obj.registrations.filter(
-            status="registered",
-            checked_in=True,
-        ).count()
+        return sum(
+            1 for r in obj.registrations.all()
+            if r.status == "registered" and r.checked_in
+        )
 
     def get_last_activity(self, obj):
-        registration = (
-            obj.registrations
-            .order_by("-registered_at")
-            .first()
+        registrations = sorted(
+            obj.registrations.all(),
+            key=lambda r: r.registered_at,
+            reverse=True
         )
-        return registration.registered_at if registration else None
+        return registrations[0].registered_at if registrations else None
 
     def get_status(self, obj):
         return "active" if obj.is_active else "inactive"
@@ -388,6 +390,7 @@ class RegistrationSerializer(serializers.ModelSerializer):
             "event_details",
             "status",
             "checked_in",
+            "connect_opt_in",
             "registered_at",
         ]
 

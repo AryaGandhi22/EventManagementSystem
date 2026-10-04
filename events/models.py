@@ -102,6 +102,7 @@ class Registration(models.Model):
         default="registered",
     )
     checked_in = models.BooleanField(default=False)
+    connect_opt_in = models.BooleanField(default=False)
     registered_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -132,7 +133,14 @@ class Feedback(models.Model):
         on_delete=models.CASCADE,
         related_name="feedbacks",
     )
+    # Overall rating
     rating = models.PositiveIntegerField()
+    # Detailed ratings (optional, but encouraged)
+    rating_content = models.PositiveIntegerField(null=True, blank=True)
+    rating_venue = models.PositiveIntegerField(null=True, blank=True)
+    rating_value = models.PositiveIntegerField(null=True, blank=True)
+    rating_organization = models.PositiveIntegerField(null=True, blank=True)
+    
     comment = models.TextField(blank=True, max_length=1000)
     created_at = models.DateTimeField(auto_now_add=True)
 
@@ -148,6 +156,39 @@ class Feedback(models.Model):
     def __str__(self):
         return f"{self.user.username} - {self.event.title} - {self.rating}/5"
 
+
+class PlatformFeedback(models.Model):
+    TYPE_CHOICES = [
+        ("suggestion", "Suggestion"),
+        ("bug", "Bug Report"),
+        ("complaint", "Complaint"),
+    ]
+    STATUS_CHOICES = [
+        ("new", "New"),
+        ("in_progress", "In Progress"),
+        ("resolved", "Resolved"),
+        ("rejected", "Rejected"),
+    ]
+
+    user = models.ForeignKey(
+        User,
+        on_delete=models.CASCADE,
+        related_name="platform_feedbacks",
+    )
+    type = models.CharField(max_length=20, choices=TYPE_CHOICES, default="suggestion")
+    status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="new")
+    title = models.CharField(max_length=200)
+    description = models.TextField()
+    screenshot = models.ImageField(upload_to="platform_feedback/", null=True, blank=True)
+    created_at = models.DateTimeField(auto_now_add=True)
+    resolved_at = models.DateTimeField(null=True, blank=True)
+    admin_notes = models.TextField(blank=True)
+
+    class Meta:
+        ordering = ["-created_at"]
+
+    def __str__(self):
+        return f"[{self.get_type_display()}] {self.title} - {self.user.username}"
 
 class Venue(models.Model):
     name = models.CharField(max_length=200)

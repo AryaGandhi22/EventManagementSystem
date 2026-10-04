@@ -249,6 +249,39 @@ class RegistrationListCreateView(generics.ListCreateAPIView):
             )
 
         return queryset
+
+class EventAttendeeListView(generics.ListAPIView):
+    serializer_class = UserSummarySerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        event_id = self.kwargs.get("event_id")
+        user = self.request.user
+        
+        is_admin = (
+            user.is_staff
+            or user.groups.filter(name__iexact="Admin").exists()
+        )
+        
+        is_organizer = Event.objects.filter(id=event_id, organizer=user).exists()
+        
+        if not (is_admin or is_organizer):
+            try:
+                my_reg = Registration.objects.get(event_id=event_id, user=user)
+                if not my_reg.connect_opt_in:
+                    return User.objects.none()
+            except Registration.DoesNotExist:
+                return User.objects.none()
+        
+        queryset = User.objects.filter(
+            registrations__event_id=event_id,
+            registrations__connect_opt_in=True,
+            registrations__status__in=["registered", "checked-in"]
+        ).exclude(
+            id=user.id
+        ).distinct().select_related("profile").prefetch_related("registrations")
+        
+        return queryset
 class RegistrationDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = RegistrationSerializer
     permission_classes = [IsAuthenticated]
@@ -519,9 +552,21 @@ class ParticipantListView(
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        queryset = User.objects.filter(
-            registrations__isnull=False
-        ).distinct()
+        user = self.request.user
+        
+        is_admin = (
+            user.is_staff
+            or user.groups.filter(name__iexact="Admin").exists()
+        )
+        
+        if is_admin:
+            queryset = User.objects.filter(
+                registrations__isnull=False
+            ).distinct().select_related("profile").prefetch_related("registrations")
+        else:
+            queryset = User.objects.filter(
+                registrations__event__organizer=user
+            ).distinct().select_related("profile").prefetch_related("registrations")
 
         search = self.request.query_params.get(
             "search"
@@ -563,7 +608,9 @@ class AdminUserListView(
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        users = User.objects.all().order_by(
+        users = User.objects.all().prefetch_related(
+            "groups"
+        ).order_by(
             "username"
         )
 
@@ -812,7 +859,7 @@ def dashboard_view(request):
         .filter(
             start_date__gte=now
         )
-        .select_related("venue")
+        .select_related("venue", "organizer")
         .prefetch_related("registrations")
         .order_by("start_date")[:5]
     )
@@ -973,6 +1020,10 @@ def reports_view(request):
         checked_in=True,
     ).count()
 
+    no_shows = registrations.filter(
+        status="no-show"
+    ).count()
+
     feedback_stats = feedbacks.aggregate(
         average_rating=Avg("rating"),
         review_count=Count("id"),
@@ -986,9 +1037,12 @@ def reports_view(request):
         "registrations"
     ):
 
-        registrations = event.registrations.all()
-        reg_count = sum(1 for r in registrations if r.status == "registered")
-        attendance = sum(1 for r in registrations if r.status == "registered" and r.checked_in)
+        registrations_list = event.registrations.all()
+        reg_count = sum(1 for r in registrations_list if r.status == "registered")
+        attendance = sum(1 for r in registrations_list if r.status == "registered" and r.checked_in)
+        no_show = sum(1 for r in registrations_list if r.status == "no-show")
+
+        total_expected = reg_count + no_show
 
         event_rows.append(
             {
@@ -997,13 +1051,24 @@ def reports_view(request):
                 "category": event.category,
                 "registrations": reg_count,
                 "attendance": attendance,
+                "no_shows": no_show,
                 "attendance_rate": round(
                     (
                         attendance
-                        / reg_count
+                        / total_expected
                         * 100
                     )
-                    if reg_count
+                    if total_expected
+                    else 0,
+                    1,
+                ),
+                "no_show_rate": round(
+                    (
+                        no_show
+                        / total_expected
+                        * 100
+                    )
+                    if total_expected
                     else 0,
                     1,
                 ),
@@ -1021,6 +1086,8 @@ def reports_view(request):
             "waitlisted": waitlisted,
 
             "cancelled": cancelled,
+            
+            "no_shows": no_shows,
 
             "total_attendance": checked_in,
 
