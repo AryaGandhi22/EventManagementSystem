@@ -34,6 +34,16 @@ import AdminRegistrations from "./pages/AdminRegistrations";
 import AdminFeedback from "./pages/AdminFeedback";
 import AdminReports from "./pages/AdminReports";
 
+import StudentDashboard from "./pages/StudentDashboard";
+import StudentEvents from "./pages/StudentEvents";
+import StudentMyEvents from "./pages/StudentMyEvents";
+import StudentEventHistory from "./pages/StudentEventHistory";
+import StudentRecommendations from "./pages/StudentRecommendations";
+import StudentFeedback from "./pages/StudentFeedback";
+import StudentNotifications from "./pages/StudentNotifications";
+import StudentReports from "./pages/StudentReports";
+import StudentSettings from "./pages/StudentSettings";
+
 function ProtectedRoute({ children }) {
   const accessToken =
     localStorage.getItem("college_event_access") ||
@@ -50,6 +60,7 @@ function App() {
   const location = useLocation();
 
   const isAdmin = location.pathname.startsWith("/admin");
+  const isStudent = location.pathname.startsWith("/student");
 
   const [showNotifications, setShowNotifications] =
     useState(false);
@@ -149,8 +160,8 @@ function App() {
 
               <nav className="sidebar-nav">
   <p className="menu-title">
-    {isAdmin ? "ADMIN" : "MAIN MENU"}
-  </p>
+  {isAdmin ? "ADMIN" : isStudent ? "STUDENT" : "MAIN MENU"}
+</p>
 
   {isAdmin ? (
     <>
@@ -224,7 +235,93 @@ function App() {
   <span>Settings</span>
 </NavLink>
     </>
-  ) : (
+  ) : isStudent ? (
+    <>
+      <NavLink
+    to="/student"
+    end
+    className="nav-item"
+  >
+    <LayoutDashboard size={19} />
+    <span>Dashboard</span>
+  </NavLink>
+
+  <NavLink
+    to="/student/events"
+    className="nav-item"
+  >
+    <CalendarDays size={19} />
+    <span>Browse Events</span>
+  </NavLink>
+
+  <NavLink
+    to="/student/my-events"
+    className="nav-item"
+  >
+    <ClipboardList size={19} />
+    <span>My Events</span>
+  </NavLink>
+
+  <NavLink
+    to="/student/event-history"
+    className="nav-item"
+  >
+    <CalendarDays size={19} />
+    <span>Event History</span>
+  </NavLink>
+
+  <NavLink
+    to="/student/recommendations"
+    className="nav-item"
+  >
+    <CalendarDays size={19} />
+    <span>Recommendations</span>
+  </NavLink>
+
+  <NavLink
+    to="/student/feedback"
+    className="nav-item"
+  >
+    <Users size={19} />
+    <span>My Feedback</span>
+  </NavLink>
+
+  <NavLink
+    to="/student/notifications"
+    className="nav-item"
+  >
+    <Bell size={19} />
+    <span>Notifications</span>
+  </NavLink>
+
+  <p className="menu-title management-title">
+    MY ACTIVITY
+  </p>
+
+  <NavLink
+    to="/student/reports"
+    className="nav-item"
+  >
+    <BarChart3 size={19} />
+    <span>Reports</span>
+  </NavLink>
+
+  <p className="menu-title management-title">
+    ACCOUNT
+  </p>
+
+  
+
+  <NavLink
+  to="/student/settings"
+  className="nav-item"
+>
+  <Settings size={19} />
+  <span>Settings</span>
+</NavLink>
+</>
+
+    ) : (
     <>
       <NavLink
         to="/"
@@ -646,13 +743,93 @@ function App() {
   }
 />
                 <Route
-                  path="/student"
-                  element={
-                    <div style={{ padding: "30px" }}>
-                      Student dashboard coming next.
-                    </div>
-                  }
-                />
+  path="/student"
+  element={
+    <ProtectedRoute>
+      <StudentDashboard />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/student/events"
+  element={
+    <ProtectedRoute>
+      <StudentEvents />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/student/my-events"
+  element={
+    <ProtectedRoute>
+      <StudentMyEvents />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/student/event-history"
+  element={
+    <ProtectedRoute>
+      <StudentEventHistory />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/student"
+  element={
+    <div style={{ padding: "30px" }}>
+      Student dashboard coming next.
+    </div>
+  }
+/>
+
+<Route
+  path="/student/recommendations"
+  element={
+    <ProtectedRoute>
+      <StudentRecommendations />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/student/feedback"
+  element={
+    <ProtectedRoute>
+      <StudentFeedback />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/student/notifications"
+  element={
+    <ProtectedRoute>
+      <StudentNotifications />
+    </ProtectedRoute>
+  }
+/>
+
+<Route
+  path="/student/reports"
+  element={
+    <ProtectedRoute>
+      <StudentReports />
+    </ProtectedRoute>
+  }
+/>
+<Route
+  path="/student/settings"
+  element={
+    <ProtectedRoute>
+      <StudentSettings />
+    </ProtectedRoute>
+  }
+/>
 
                 <Route
                   path="*"
