@@ -443,6 +443,32 @@ class CheckInView(generics.GenericAPIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
+        now = timezone.now()
+
+        # Check-in Timing Guard: Block check-in prior to event start date/time
+        if event.start_date:
+            # Allow check-in up to 2 hours before the event start_date
+            checkin_open_time = event.start_date - timezone.timedelta(hours=2)
+            if now < checkin_open_time:
+                formatted_time = event.start_date.strftime("%d %b %Y at %I:%M %p")
+                return Response(
+                    {
+                        "detail": f"Check-in is not open yet. This event starts on {formatted_time}.",
+                        "code": "checkin_not_open",
+                        "event_start": event.start_date,
+                    },
+                    status=status.HTTP_400_BAD_REQUEST,
+                )
+
+        if event.end_date and now > event.end_date:
+            return Response(
+                {
+                    "detail": "Check-in is closed because this event has ended.",
+                    "code": "event_ended",
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
+
         # Already checked-in — return duplicate info
         if registration.checked_in:
             return Response(

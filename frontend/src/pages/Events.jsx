@@ -409,6 +409,11 @@ function Events() {
 
     setEditError("");
 
+    if (isOngoingEvent(selectedEvent) && editForm.status === "cancelled") {
+      setEditError("Ongoing events cannot be cancelled while they are in progress.");
+      return;
+    }
+
     if (!editForm.title.trim()) {
       setEditError(
         "Please enter an event title."

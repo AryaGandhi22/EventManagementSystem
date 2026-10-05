@@ -18,18 +18,19 @@ function playBeep(type) {
 
 function ResultBanner({ result, onDismiss }) {
   if (!result) return null;
-  const { code, student, checked_in_at, attendance } = result;
-  const isSuccess = code === "success", isDuplicate = code === "already_checked_in";
-  const bg = isSuccess ? "linear-gradient(135deg,#16a34a,#15803d)" : isDuplicate ? "linear-gradient(135deg,#d97706,#b45309)" : "linear-gradient(135deg,#dc2626,#b91c1c)";
-  const Icon = isSuccess ? CheckCircle2 : isDuplicate ? AlertTriangle : XCircle;
-  const title = isSuccess ? "Check-In Successful!" : isDuplicate ? "Already Checked In" : "Invalid Ticket";
+  const { code, student, checked_in_at, attendance, detail } = result;
+  const isSuccess = code === "success", isDuplicate = code === "already_checked_in", isNotOpen = code === "checkin_not_open", isEnded = code === "event_ended";
+  const bg = isSuccess ? "linear-gradient(135deg,#16a34a,#15803d)" : isDuplicate ? "linear-gradient(135deg,#d97706,#b45309)" : isNotOpen ? "linear-gradient(135deg,#2563eb,#1d4ed8)" : isEnded ? "linear-gradient(135deg,#475569,#334155)" : "linear-gradient(135deg,#dc2626,#b91c1c)";
+  const Icon = isSuccess ? CheckCircle2 : isDuplicate ? AlertTriangle : (isNotOpen || isEnded) ? Clock3 : XCircle;
+  const title = isSuccess ? "Check-In Successful!" : isDuplicate ? "Already Checked In" : isNotOpen ? "Check-In Not Open Yet" : isEnded ? "Check-In Closed (Event Ended)" : "Invalid Ticket";
   return (
     <div style={{ position:"fixed",top:"24px",left:"50%",transform:"translateX(-50%)",zIndex:9999,background:bg,color:"#fff",borderRadius:"16px",padding:"20px 28px",minWidth:"340px",maxWidth:"460px",boxShadow:"0 20px 60px rgba(0,0,0,0.4)",animation:"slideInDown 0.3s ease" }}>
       <div style={{ display:"flex",alignItems:"flex-start",gap:"14px" }}>
         <Icon size={26} style={{ flexShrink:0,marginTop:"2px" }}/>
         <div style={{ flex:1 }}>
           <div style={{ fontWeight:700,fontSize:"1rem",marginBottom:"5px" }}>{title}</div>
-          {student && <div style={{ fontSize:"0.88rem" }}><div style={{ fontWeight:600 }}>{student.name}</div><div style={{ opacity:0.85 }}>{student.email}</div>{student.registration_number && <div>Roll: {student.registration_number}</div>}</div>}
+          {detail && <div style={{ fontSize:"0.88rem", opacity:0.95 }}>{detail}</div>}
+          {student && <div style={{ fontSize:"0.88rem", marginTop:"4px" }}><div style={{ fontWeight:600 }}>{student.name}</div><div style={{ opacity:0.85 }}>{student.email}</div>{student.registration_number && <div>Roll: {student.registration_number}</div>}</div>}
           {checked_in_at && <div style={{ fontSize:"0.78rem",opacity:0.8,marginTop:"4px" }}>{isSuccess ? "Checked in at " : "Previously at "}{new Date(checked_in_at).toLocaleTimeString("en-IN",{hour:"2-digit",minute:"2-digit",second:"2-digit"})}</div>}
           {isSuccess && attendance && <div style={{ marginTop:"8px",background:"rgba(255,255,255,0.18)",borderRadius:"8px",padding:"6px 12px",fontSize:"0.82rem",display:"flex",gap:"14px" }}><span>{attendance.total_checked_in} in</span><span>/ {attendance.total_registered}</span><span>({attendance.percentage}%)</span></div>}
         </div>
