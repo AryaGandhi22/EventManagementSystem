@@ -23,7 +23,6 @@ import "./App.css";
 import Dashboard from "./pages/Dashboard";
 import Events from "./pages/Events";
 import Participants from "./pages/Participants";
-import Venues from "./pages/Venues";
 import Reports from "./pages/Reports";
 import SettingsPage from "./pages/Settings";
 
@@ -375,14 +374,6 @@ function App() {
         <span>Participants</span>
       </NavLink>
 
-      <NavLink
-        to="/venues"
-        className="nav-item"
-      >
-        <MapPin size={19} />
-        <span>Venues</span>
-      </NavLink>
-
       <p className="menu-title management-title">
         MANAGEMENT
       </p>
@@ -665,10 +656,6 @@ function App() {
                   element={<Participants />}
                 />
 
-                <Route
-                  path="/venues"
-                  element={<Venues />}
-                />
 
                 <Route
                   path="/reports"
