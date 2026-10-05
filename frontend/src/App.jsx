@@ -47,8 +47,8 @@ import StudentSettings from "./pages/StudentSettings";
 
 function ProtectedRoute({ children }) {
   const accessToken =
-    localStorage.getItem("college_event_access") ||
-    localStorage.getItem("access_token");
+    sessionStorage.getItem("college_event_access") ||
+    sessionStorage.getItem("access_token");
 
   if (!accessToken) {
     return <Navigate to="/login" replace />;

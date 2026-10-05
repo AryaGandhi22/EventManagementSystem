@@ -131,9 +131,8 @@ const StudentEventHistory = () => {
       const status = registration.status;
 
       if (
-        ["checked-in", "no-show", "cancelled"].includes(
-          status
-        )
+        registration.checked_in ||
+        ["checked-in", "no-show", "cancelled"].includes(status)
       ) {
         return true;
       }
@@ -146,17 +145,15 @@ const StudentEventHistory = () => {
 
   const attendedCount = historyEvents.filter(
     (registration) =>
-      registration.status === "checked-in"
+      registration.checked_in || registration.status === "checked-in"
   ).length;
 
   const noShowCount = historyEvents.filter(
-    (registration) =>
-      registration.status === "no-show"
+    (registration) => registration.status === "no-show"
   ).length;
 
   const cancelledCount = historyEvents.filter(
-    (registration) =>
-      registration.status === "cancelled"
+    (registration) => registration.status === "cancelled"
   ).length;
 
   const getStatusIcon = (status) => {
@@ -337,11 +334,12 @@ const StudentEventHistory = () => {
               </thead>
 
               <tbody>
-                {historyEvents.map(
-                  (registration) => {
-                    const status =
-                      registration.status ||
-                      "completed";
+                {historyEvents.map((registration) => {
+                  const status = registration.checked_in
+                    ? "checked-in"
+                    : registration.status === "registered"
+                    ? "completed"
+                    : registration.status || "completed";
 
                     return (
                       <tr key={registration.id}>

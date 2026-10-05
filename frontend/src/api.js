@@ -10,24 +10,24 @@ const DEMO_CREDENTIALS = {
 };
 
 function getAccessToken() {
-  return localStorage.getItem(ACCESS_KEY);
+  return sessionStorage.getItem(ACCESS_KEY);
 }
 
 function saveTokens(data) {
-  if (data.access) localStorage.setItem(ACCESS_KEY, data.access);
-  if (data.refresh) localStorage.setItem(REFRESH_KEY, data.refresh);
-  if (data.user) localStorage.setItem(USER_KEY, JSON.stringify(data.user));
+  if (data.access) sessionStorage.setItem(ACCESS_KEY, data.access);
+  if (data.refresh) sessionStorage.setItem(REFRESH_KEY, data.refresh);
+  if (data.user) sessionStorage.setItem(USER_KEY, JSON.stringify(data.user));
 }
 
 function clearTokens() {
-  localStorage.removeItem(ACCESS_KEY);
-  localStorage.removeItem(REFRESH_KEY);
-  localStorage.removeItem(USER_KEY);
+  sessionStorage.removeItem(ACCESS_KEY);
+  sessionStorage.removeItem(REFRESH_KEY);
+  sessionStorage.removeItem(USER_KEY);
 }
 
 export function getStoredUser() {
   try {
-    return JSON.parse(localStorage.getItem(USER_KEY) || "null");
+    return JSON.parse(sessionStorage.getItem(USER_KEY) || "null");
   } catch {
     return null;
   }
@@ -74,7 +74,7 @@ async function loginDemo() {
 }
 
 async function refreshAccessToken() {
-  const refresh = localStorage.getItem(REFRESH_KEY);
+  const refresh = sessionStorage.getItem(REFRESH_KEY);
   if (!refresh) return false;
 
   try {
@@ -86,8 +86,8 @@ async function refreshAccessToken() {
       },
       null
     );
-    if (data.access) localStorage.setItem(ACCESS_KEY, data.access);
-    if (data.refresh) localStorage.setItem(REFRESH_KEY, data.refresh);
+    if (data.access) sessionStorage.setItem(ACCESS_KEY, data.access);
+    if (data.refresh) sessionStorage.setItem(REFRESH_KEY, data.refresh);
     return true;
   } catch {
     return false;
@@ -216,7 +216,7 @@ export async function toggleConnectOptIn(id, optIn) {
 }
 
 export async function getEventAttendees(eventId) {
-  const data = await api(`/events/${eventId}/attendees/`);
+  const data = await api(`/${eventId}/attendees/`);
   return data.results || data;
 }
 

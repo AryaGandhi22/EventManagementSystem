@@ -124,34 +124,47 @@ const StudentMyEvents = () => {
   const getStatus = (registration) =>
     registration.status || "registered";
 
-  const upcomingEvents = useMemo(
-    () =>
-      registrations.filter((registration) =>
-        ["registered", "waitlisted"].includes(
-          getStatus(registration)
-        )
-      ),
-    [registrations]
-  );
+  const upcomingEvents = useMemo(() => {
+    const now = new Date();
+    return registrations.filter((registration) => {
+      const status = getStatus(registration);
+      if (
+        registration.checked_in ||
+        ["checked-in", "no-show", "cancelled"].includes(status)
+      ) {
+        return false;
+      }
+      const eventDate = getEventDate(registration);
+      if (eventDate && eventDate < now) {
+        return false;
+      }
+      return ["registered", "waitlisted"].includes(status);
+    });
+  }, [registrations]);
 
   const cancelledEvents = useMemo(
     () =>
       registrations.filter(
-        (registration) =>
-          getStatus(registration) === "cancelled"
+        (registration) => getStatus(registration) === "cancelled"
       ),
     [registrations]
   );
 
-  const completedEvents = useMemo(
-    () =>
-      registrations.filter((registration) =>
-        ["checked-in", "no-show"].includes(
-          getStatus(registration)
-        )
-      ),
-    [registrations]
-  );
+  const completedEvents = useMemo(() => {
+    const now = new Date();
+    return registrations.filter((registration) => {
+      const status = getStatus(registration);
+      if (status === "cancelled") return false;
+      if (
+        registration.checked_in ||
+        ["checked-in", "no-show"].includes(status)
+      ) {
+        return true;
+      }
+      const eventDate = getEventDate(registration);
+      return eventDate && eventDate < now;
+    });
+  }, [registrations]);
 
   const visibleEvents =
     activeTab === "upcoming"

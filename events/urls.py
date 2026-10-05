@@ -13,6 +13,7 @@ from .views import (
     EventDetailView,
     EventListCreateView,
     EventAttendeeListView,
+    FeedbackDetailView,
     FeedbackListCreateView,
     PlatformFeedbackListCreateView,
     PlatformFeedbackDetailView,
