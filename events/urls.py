@@ -10,6 +10,7 @@ from .views import (
     AdminUserListView,
     AdminVerifyOrganizerView,
     CheckInView,
+    EventAttendanceView,
     EventDetailView,
     EventListCreateView,
     EventAttendeeListView,
@@ -171,6 +172,13 @@ path(
         name="registration-check-in",
     ),
 
+    # QR token check-in (no pk needed — token in POST body)
+    path(
+        "registrations/check-in/",
+        CheckInView.as_view(),
+        name="registration-qr-check-in",
+    ),
+
     path(
         "registrations/<str:pk>/",
         RegistrationDetailView.as_view(),
@@ -258,6 +266,13 @@ path(
     # ========================================================
 
     # Keep the dynamic event route LAST.
+    # Attendance roster for a specific event (organizer/admin only)
+    path(
+        "<str:pk>/attendance/",
+        EventAttendanceView.as_view(),
+        name="event-attendance",
+    ),
+
     path(
         "<str:event_id>/attendees/",
         EventAttendeeListView.as_view(),

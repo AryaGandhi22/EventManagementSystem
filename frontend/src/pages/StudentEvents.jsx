@@ -346,11 +346,28 @@ const [registrationError, setRegistrationError] =
                     </span>
                   </div>
 
-                  <div className="student-event-detail">
-                    <Users size={15} />
-                    <span>
-                      Capacity: {getCapacity(event)}
+                  <div className="student-event-detail" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '4px' }}>
+                    <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                      <Users size={15} />
+                      <span>
+                        {event.registration_count ?? 0}{" / "}{event.capacity ?? "?"}{" registered"}
+                      </span>
                     </span>
+                    {event.capacity > 0 && (
+                      <div style={{ width: '100%', height: '5px', background: 'var(--border)', borderRadius: '99px', overflow: 'hidden' }}>
+                        <div style={{
+                          height: '100%',
+                          borderRadius: '99px',
+                          width: `${Math.min(((event.registration_count ?? 0) / event.capacity) * 100, 100)}%`,
+                          background: ((event.registration_count ?? 0) / event.capacity) >= 0.9
+                            ? 'var(--danger, #ef4444)'
+                            : ((event.registration_count ?? 0) / event.capacity) >= 0.6
+                            ? 'var(--warning, #f59e0b)'
+                            : 'var(--success, #22c55e)',
+                          transition: 'width 0.4s ease'
+                        }} />
+                      </div>
+                    )}
                   </div>
 
                 </div>
@@ -432,11 +449,28 @@ const [registrationError, setRegistrationError] =
                 </span>
               </div>
 
-              <div className="student-event-detail">
-                <Users size={16} />
-                <span>
-                  Capacity: {getCapacity(selectedEvent)}
+              <div className="student-event-detail" style={{ flexDirection: 'column', alignItems: 'flex-start', gap: '5px' }}>
+                <span style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                  <Users size={16} />
+                  <span>
+                    {selectedEvent.registration_count ?? 0}{" / "}{selectedEvent.capacity ?? "?"}{" registered"}
+                  </span>
                 </span>
+                {selectedEvent.capacity > 0 && (
+                  <div style={{ width: '100%', height: '6px', background: 'var(--border)', borderRadius: '99px', overflow: 'hidden' }}>
+                    <div style={{
+                      height: '100%',
+                      borderRadius: '99px',
+                      width: `${Math.min(((selectedEvent.registration_count ?? 0) / selectedEvent.capacity) * 100, 100)}%`,
+                      background: ((selectedEvent.registration_count ?? 0) / selectedEvent.capacity) >= 0.9
+                        ? 'var(--danger, #ef4444)'
+                        : ((selectedEvent.registration_count ?? 0) / selectedEvent.capacity) >= 0.6
+                        ? 'var(--warning, #f59e0b)'
+                        : 'var(--success, #22c55e)',
+                      transition: 'width 0.4s ease'
+                    }} />
+                  </div>
+                )}
               </div>
 
             </div>

@@ -1,4 +1,5 @@
 from django.contrib.auth.models import User
+from django.db import transaction
 from django.db.models import Avg, Count, Q, Case, When, Value, IntegerField
 from django.utils import timezone
 
@@ -101,13 +102,19 @@ class EventListCreateView(generics.ListCreateAPIView):
         is_admin = user.is_staff or user.groups.filter(name__iexact="Admin").exists()
         is_organizer = user.groups.filter(name__iexact="Organizer").exists()
 
-        if is_admin:
+        mine = self.request.query_params.get("mine") in {"1", "true", "yes"}
+
+        if mine:
+            queryset = queryset.filter(organizer=user)
+        elif is_admin:
             pass  # Admins see all events (draft, published, completed, cancelled)
         elif is_organizer:
-            # Organizers see published/completed events and their own draft events
-            queryset = queryset.filter(
-                Q(status__in=["published", "completed"]) | Q(organizer=user)
-            )
+            # If requesting student browsing feed (upcoming or recommended), show published events
+            if self.request.query_params.get("upcoming") or self.request.query_params.get("recommended"):
+                queryset = queryset.filter(status__in=["published", "completed"])
+            else:
+                # In Organizer management workspace, show ONLY events created by this organizer
+                queryset = queryset.filter(organizer=user)
         else:
             # Students / Participants only see published and completed events
             queryset = queryset.filter(status__in=["published", "completed"])
@@ -161,6 +168,18 @@ class EventDetailView(generics.RetrieveUpdateDestroyAPIView):
         ):
             self.permission_denied(self.request)
 
+        now = timezone.now()
+        is_ongoing = (
+            event.start_date
+            and event.end_date
+            and event.start_date <= now <= event.end_date
+        )
+
+        new_status = serializer.validated_data.get("status")
+        if is_ongoing and new_status == "cancelled":
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError({"detail": "Ongoing events cannot be cancelled while they are in progress."})
+
         serializer.save()
 
     def perform_destroy(self, instance):
@@ -169,6 +188,17 @@ class EventDetailView(generics.RetrieveUpdateDestroyAPIView):
             and not is_admin_user(self.request.user)
         ):
             self.permission_denied(self.request)
+
+        now = timezone.now()
+        is_ongoing = (
+            instance.start_date
+            and instance.end_date
+            and instance.start_date <= now <= instance.end_date
+        )
+
+        if is_ongoing:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError({"detail": "Ongoing events cannot be deleted while they are in progress."})
 
         instance.delete()
 
@@ -354,6 +384,12 @@ class RegistrationDetailView(generics.RetrieveUpdateDestroyAPIView):
         return registration
 
     def perform_destroy(self, instance):
+        now = timezone.now()
+        event = instance.event
+        if event and event.start_date and event.start_date <= now:
+            from rest_framework.exceptions import ValidationError
+            raise ValidationError({"detail": "Registration cannot be cancelled for an event that is ongoing or already started."})
+
         instance.status = "cancelled"
         instance.checked_in = False
         instance.save(
@@ -361,64 +397,207 @@ class RegistrationDetailView(generics.RetrieveUpdateDestroyAPIView):
         )
 
 class CheckInView(generics.GenericAPIView):
+    """POST /api/registrations/check-in/  — accepts {qr_token} or pk in URL."""
     permission_classes = [IsAuthenticated]
 
-    queryset = Registration.objects.select_related(
-        "event",
-        "user",
-    )
+    def _get_registration(self, request, pk):
+        """Resolve registration by URL pk or by qr_token in POST body."""
+        qr_token = request.data.get("qr_token")
+        if qr_token:
+            try:
+                return Registration.objects.select_related(
+                    "event", "event__organizer", "user", "user__profile"
+                ).get(qr_token=qr_token)
+            except Registration.DoesNotExist:
+                return None
+        # Fall back to pk from URL
+        try:
+            return Registration.objects.select_related(
+                "event", "event__organizer", "user", "user__profile"
+            ).get(pk=pk)
+        except Registration.DoesNotExist:
+            return None
 
-    def post(self, request, pk):
-        registration = self.get_object()
+    def post(self, request, pk=None):
+        registration = self._get_registration(request, pk)
 
-        if (
-            registration.user != request.user
-            and registration.event.organizer != request.user
-            and not request.user.is_staff
-        ):
+        if registration is None:
             return Response(
-                {
-                    "detail": (
-                        "You do not have permission "
-                        "to check in this registration."
-                    )
-                },
+                {"detail": "Invalid ticket — registration not found.",
+                 "code": "invalid_ticket"},
+                status=status.HTTP_404_NOT_FOUND,
+            )
+
+        event = registration.event
+
+        # Authorization: only event organizer or admin/staff
+        is_organizer = (event.organizer == request.user)
+        is_admin = (
+            request.user.is_staff
+            or request.user.groups.filter(name__iexact="Admin").exists()
+        )
+        if not (is_organizer or is_admin):
+            return Response(
+                {"detail": "Only the event organizer or admin can check in attendees.",
+                 "code": "forbidden"},
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        if registration.status != "registered":
+        # Already checked-in — return duplicate info
+        if registration.checked_in:
             return Response(
                 {
-                    "detail": (
-                        "Only registered participants "
-                        "can check in."
-                    )
+                    "detail": "Already checked in.",
+                    "code": "already_checked_in",
+                    "checked_in_at": registration.checked_in_at,
+                    "student": {
+                        "name": registration.user.get_full_name() or registration.user.username,
+                        "email": registration.user.email,
+                        "username": registration.user.username,
+                    },
                 },
+                status=status.HTTP_409_CONFLICT,
+            )
+
+        if registration.status not in ["registered", "waitlisted"]:
+            return Response(
+                {"detail": f"Cannot check in: registration status is '{registration.status}'.",
+                 "code": "invalid_status"},
                 status=status.HTTP_400_BAD_REQUEST,
             )
 
-        if registration.event.start_date > timezone.now():
-            return Response(
-                {
-                    "detail": (
-                        "Check-in opens when the event starts."
-                    )
-                },
-                status=status.HTTP_400_BAD_REQUEST,
+        # Atomic update — prevents race conditions
+        with transaction.atomic():
+            updated = Registration.objects.filter(
+                pk=registration.pk,
+                checked_in=False,
+            ).update(
+                checked_in=True,
+                checked_in_at=timezone.now(),
+                checked_in_by=request.user,
+                status="registered",
             )
+            if not updated:
+                # Raced to a double check-in
+                registration.refresh_from_db()
+                return Response(
+                    {"detail": "Already checked in.",
+                     "code": "already_checked_in",
+                     "checked_in_at": registration.checked_in_at},
+                    status=status.HTTP_409_CONFLICT,
+                )
 
-        registration.checked_in = True
+        registration.refresh_from_db()
 
-        registration.save(
-            update_fields=["checked_in"]
-        )
+        # Attendance stats
+        total_registered = Registration.objects.filter(
+            event=event, status__in=["registered", "checked-in"]
+        ).count()
+        total_checked_in = Registration.objects.filter(
+            event=event, checked_in=True
+        ).count()
+
+        user = registration.user
+        profile = getattr(user, "profile", None)
 
         return Response(
-            RegistrationSerializer(
-                registration,
-                context={"request": request},
-            ).data
+            {
+                "detail": "Check-in successful.",
+                "code": "success",
+                "checked_in_at": registration.checked_in_at,
+                "student": {
+                    "id": str(user.pk),
+                    "name": user.get_full_name() or user.username,
+                    "email": user.email,
+                    "username": user.username,
+                    "registration_number": getattr(profile, "registration_number", ""),
+                },
+                "event": {
+                    "id": str(event.pk),
+                    "title": event.title,
+                },
+                "attendance": {
+                    "total_registered": total_registered,
+                    "total_checked_in": total_checked_in,
+                    "percentage": round(
+                        (total_checked_in / total_registered * 100) if total_registered else 0, 1
+                    ),
+                },
+            },
+            status=status.HTTP_200_OK,
         )
+
+
+class EventAttendanceView(generics.GenericAPIView):
+    """GET /api/<event_id>/attendance/ — full roster + metrics for organizer/admin."""
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, pk):
+        try:
+            event = Event.objects.get(pk=pk)
+        except Event.DoesNotExist:
+            return Response({"detail": "Event not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        is_organizer = (event.organizer == request.user)
+        is_admin = (
+            request.user.is_staff
+            or request.user.groups.filter(name__iexact="Admin").exists()
+        )
+        if not (is_organizer or is_admin):
+            return Response(
+                {"detail": "Only the event organizer or admin can view attendance."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        registrations = Registration.objects.filter(
+            event=event,
+            status__in=["registered", "waitlisted"],
+        ).select_related("user", "user__profile", "checked_in_by").order_by("-checked_in", "registered_at")
+
+        total_registered = registrations.filter(status="registered").count()
+        total_checked_in = registrations.filter(checked_in=True).count()
+
+        attendees = []
+        for reg in registrations:
+            u = reg.user
+            profile = getattr(u, "profile", None)
+            attendees.append({
+                "registration_id": str(reg.pk),
+                "qr_token": reg.qr_token,
+                "status": reg.status,
+                "checked_in": reg.checked_in,
+                "checked_in_at": reg.checked_in_at,
+                "checked_in_by": (
+                    reg.checked_in_by.get_full_name() or reg.checked_in_by.username
+                ) if reg.checked_in_by else None,
+                "registered_at": reg.registered_at,
+                "student": {
+                    "id": str(u.pk),
+                    "name": u.get_full_name() or u.username,
+                    "email": u.email,
+                    "username": u.username,
+                    "registration_number": getattr(profile, "registration_number", ""),
+                },
+            })
+
+        return Response({
+            "event": {
+                "id": str(event.pk),
+                "title": event.title,
+                "capacity": event.capacity,
+                "start_date": event.start_date,
+                "end_date": event.end_date,
+            },
+            "summary": {
+                "total_registered": total_registered,
+                "total_checked_in": total_checked_in,
+                "total_not_arrived": total_registered - total_checked_in,
+                "percentage": round(
+                    (total_checked_in / total_registered * 100) if total_registered else 0, 1
+                ),
+            },
+            "attendees": attendees,
+        })
 
 
 # ============================================================
@@ -1262,6 +1441,18 @@ def admin_event_status_view(request, pk):
                     f"Choose from: {', '.join(valid_statuses)}."
                 )
             },
+            status=status.HTTP_400_BAD_REQUEST,
+        )
+
+    now = timezone.now()
+    is_ongoing = (
+        event.start_date
+        and event.end_date
+        and event.start_date <= now <= event.end_date
+    )
+    if is_ongoing and new_status == "cancelled":
+        return Response(
+            {"detail": "Ongoing events cannot be cancelled while they are in progress."},
             status=status.HTTP_400_BAD_REQUEST,
         )
 

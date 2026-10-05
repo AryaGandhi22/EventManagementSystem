@@ -59,12 +59,17 @@ const StudentFeedback = () => {
         feedback.map((item) => String(item.event))
       );
 
+      const now = new Date();
+
       const pending = registrations
         .filter(
           (registration) =>
             registration.status === "registered" &&
             registration.event_details &&
-            !submittedEventIds.has(String(registration.event))
+            !submittedEventIds.has(String(registration.event)) &&
+            // Only allow feedback after the event has ended
+            registration.event_details.end_date &&
+            new Date(registration.event_details.end_date) < now
         )
         .map((registration) => {
           const event = registration.event_details;

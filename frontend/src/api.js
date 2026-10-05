@@ -27,7 +27,11 @@ function clearTokens() {
 
 export function getStoredUser() {
   try {
-    return JSON.parse(sessionStorage.getItem(USER_KEY) || "null");
+    const userStr =
+      sessionStorage.getItem(USER_KEY) ||
+      localStorage.getItem(USER_KEY) ||
+      localStorage.getItem("user");
+    return JSON.parse(userStr || "null");
   } catch {
     return null;
   }
@@ -249,6 +253,61 @@ export async function getPlatformFeedbacks() {
 
 export async function checkInRegistration(id) {
   return api(`/registrations/${id}/check-in/`, { method: "POST" });
+}
+
+export async function checkInByQrToken(qrToken) {
+  return api("/registrations/check-in/", {
+    method: "POST",
+    body: JSON.stringify({ qr_token: qrToken }),
+  });
+}
+
+export async function getEventAttendance(eventId) {
+  return api(`/${eventId}/attendance/`);
+}
+
+export async function exportAttendanceCSV(eventId, eventTitle = "attendance") {
+  const token = getAccessToken();
+  const headers = {};
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  const response = await fetch(`${API_BASE}/${eventId}/attendance/`, {
+    method: "GET",
+    headers,
+  });
+
+  if (!response.ok) {
+    throw new Error("Failed to fetch attendance data for export.");
+  }
+
+  const data = await response.json();
+  const attendees = data.attendees || [];
+
+  const rows = [
+    ["#", "Name", "Email", "Username", "Roll No.", "Status", "Checked In", "Check-In Time", "Registered At"],
+    ...attendees.map((a, i) => [
+      i + 1,
+      a.student?.name || "",
+      a.student?.email || "",
+      a.student?.username || "",
+      a.student?.registration_number || "",
+      a.status,
+      a.checked_in ? "Yes" : "No",
+      a.checked_in_at ? new Date(a.checked_in_at).toLocaleString("en-IN") : "",
+      a.registered_at ? new Date(a.registered_at).toLocaleString("en-IN") : "",
+    ]),
+  ];
+
+  const csvContent = rows.map(r => r.map(v => `"${String(v).replace(/"/g, '""')}"`).join(",")).join("\n");
+  const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+  const url = URL.createObjectURL(blob);
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `${eventTitle.replace(/\s+/g, "_")}_attendance.csv`;
+  document.body.appendChild(a);
+  a.click();
+  a.remove();
+  URL.revokeObjectURL(url);
 }
 
 export async function getParticipants(search = "") {

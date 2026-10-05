@@ -44,6 +44,7 @@ import StudentFeedback from "./pages/StudentFeedback";
 import StudentNotifications from "./pages/StudentNotifications";
 import StudentReports from "./pages/StudentReports";
 import StudentSettings from "./pages/StudentSettings";
+import OrganizerCheckIn from "./pages/OrganizerCheckIn";
 
 function ProtectedRoute({ children }) {
   const accessToken =
@@ -838,6 +839,24 @@ function App() {
     </ProtectedRoute>
   }
 />
+
+                <Route
+                  path="/events/:eventId/check-in"
+                  element={
+                    <ProtectedRoute>
+                      <OrganizerCheckIn />
+                    </ProtectedRoute>
+                  }
+                />
+
+                <Route
+                  path="/admin/events/:eventId/check-in"
+                  element={
+                    <ProtectedRoute>
+                      <OrganizerCheckIn />
+                    </ProtectedRoute>
+                  }
+                />
 
                 <Route
                   path="*"

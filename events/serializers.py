@@ -416,6 +416,9 @@ class RegistrationSerializer(serializers.ModelSerializer):
             "event_details",
             "status",
             "checked_in",
+            "checked_in_at",
+            "checked_in_by",
+            "qr_token",
             "connect_opt_in",
             "registered_at",
         ]
@@ -427,6 +430,9 @@ class RegistrationSerializer(serializers.ModelSerializer):
             "event",
             "status",
             "checked_in",
+            "checked_in_at",
+            "checked_in_by",
+            "qr_token",
             "registered_at",
         ]
 
@@ -740,6 +746,11 @@ class FeedbackSerializer(serializers.ModelSerializer):
         if not attended:
             raise serializers.ValidationError(
                 "Feedback can be submitted only for a registered event."
+            )
+
+        if event.end_date > timezone.now():
+            raise serializers.ValidationError(
+                "Feedback can only be submitted after the event has ended."
             )
 
         return event

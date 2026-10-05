@@ -1,3 +1,7 @@
+import hmac
+import hashlib
+import secrets
+
 from django.contrib.auth.models import User
 from django.db import models
 
@@ -104,8 +108,31 @@ class Registration(models.Model):
         default="registered",
     )
     checked_in = models.BooleanField(default=False)
+    checked_in_at = models.DateTimeField(null=True, blank=True)
+    checked_in_by = models.ForeignKey(
+        User,
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="checked_in_registrations",
+    )
     connect_opt_in = models.BooleanField(default=False)
+    qr_token = models.CharField(max_length=128, unique=True, blank=True)
     registered_at = models.DateTimeField(auto_now_add=True)
+
+    def _generate_qr_token(self):
+        """Generate a cryptographically secure HMAC token for this registration."""
+        raw = f"{self.pk}:{self.user_id}:{self.event_id}:{secrets.token_hex(8)}"
+        return hmac.new(
+            secrets.token_bytes(16), raw.encode(), hashlib.sha256
+        ).hexdigest()
+
+    def save(self, *args, **kwargs):
+        if not self.qr_token:
+            # Generate unique token before first save
+            token = f"{secrets.token_urlsafe(32)}"
+            self.qr_token = token
+        super().save(*args, **kwargs)
 
     class Meta:
         ordering = ["-registered_at"]

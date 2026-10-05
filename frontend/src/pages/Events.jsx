@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState } from "react";
-import { useSearchParams } from "react-router-dom";
+import { useSearchParams, useNavigate } from "react-router-dom";
 
 import {
   Plus,
@@ -10,6 +10,7 @@ import {
   X,
   Pencil,
   Trash2,
+  QrCode,
 } from "lucide-react";
 
 import {
@@ -18,6 +19,7 @@ import {
   getVenues,
   updateEvent,
   deleteEvent,
+  getStoredUser,
 } from "../api";
 
 import {
@@ -68,17 +70,25 @@ function toDateTimeLocal(value) {
 
 function Events() {
   const [searchParams] = useSearchParams();
+  const navigate = useNavigate();
+
+  const currentUser = getStoredUser();
+  const isAdmin = Boolean(
+    currentUser?.is_staff ||
+    currentUser?.role === "admin" ||
+    currentUser?.role === "Admin"
+  );
+  const isOrganizer = Boolean(
+    currentUser?.role === "organizer" ||
+    currentUser?.role === "Organizer" ||
+    currentUser?.is_verified_organizer
+  );
 
   const [events, setEvents] = useState([]);
   const [venues, setVenues] = useState([]);
 
   const [category, setCategory] = useState("all");
 
-  /*
-   * IMPORTANT:
-   * Default is now ALL EVENTS.
-   * This allows all events from MongoDB to appear.
-   */
   const [scope, setScope] = useState("all");
 
   const [loading, setLoading] = useState(true);
@@ -122,15 +132,12 @@ function Events() {
             category === "all"
               ? undefined
               : category,
-
-          /*
-           * Only send upcoming=true when
-           * the user actually selects Upcoming Events.
-           *
-           * For All Events, nothing is filtered.
-           */
           upcoming:
             scope === "upcoming"
+              ? "true"
+              : undefined,
+          mine:
+            isOrganizer && !isAdmin
               ? "true"
               : undefined,
         }),
@@ -165,16 +172,29 @@ function Events() {
   ========================== */
 
   const filteredEvents = useMemo(() => {
+    let list = events;
+
+    // For club organizers who are not admins, strictly show only events created by them
+    if (isOrganizer && !isAdmin && currentUser) {
+      list = list.filter((event) => {
+        const orgId = String(event.organizer?.id || event.organizer_id || event.organizer?.pk || "");
+        const userId = String(currentUser.id || currentUser.pk || "");
+        const orgUser = String(event.organizer?.username || "");
+        const username = String(currentUser.username || "");
+        return (orgId && userId && orgId === userId) || (orgUser && username && orgUser === username);
+      });
+    }
+
     if (scope === "all") {
-      return events;
+      return list;
     }
 
     if (scope === "pending") {
-      return events.filter((event) => event.status === "draft");
+      return list.filter((event) => event.status === "draft");
     }
 
     if (scope === "published") {
-      return events.filter(
+      return list.filter(
         (event) =>
           event.status === "published" &&
           (!event.end_date || new Date(event.end_date) >= new Date())
@@ -182,7 +202,7 @@ function Events() {
     }
 
     if (scope === "upcoming") {
-      return events.filter(
+      return list.filter(
         (event) =>
           event.status === "published" &&
           (!event.start_date || new Date(event.start_date) >= new Date())
@@ -190,15 +210,15 @@ function Events() {
     }
 
     if (scope === "completed") {
-      return events.filter(
+      return list.filter(
         (event) =>
           event.status === "completed" ||
           (event.end_date && new Date(event.end_date) < new Date())
       );
     }
 
-    return events;
-  }, [events, scope]);
+    return list;
+  }, [events, scope, isOrganizer, isAdmin, currentUser]);
 
   /* =========================
      HELPERS
@@ -463,16 +483,21 @@ function Events() {
     }
   };
 
-  /* =========================
-     DELETE EVENT
-     
-     IMPORTANT:
-     NO confirm()
-     NO popup
-  ========================== */
+  const isOngoingEvent = (evt) => {
+    if (!evt || !evt.start_date || !evt.end_date) return false;
+    const now = new Date();
+    const start = new Date(evt.start_date);
+    const end = new Date(evt.end_date);
+    return start <= now && now <= end;
+  };
 
   const handleDelete = async () => {
     if (!selectedEvent) {
+      return;
+    }
+
+    if (isOngoingEvent(selectedEvent)) {
+      setEditError("Ongoing events cannot be deleted while they are in progress.");
       return;
     }
 
@@ -922,24 +947,47 @@ function Events() {
 
                   </div>
 
-                  <div className="event-action">
+                  {(() => {
+                    const isOwnerOrAdmin = isAdmin || (
+                      currentUser && (
+                        String(event.organizer?.id || event.organizer_id || event.organizer?.pk || "") === String(currentUser.id || currentUser.pk || "") ||
+                        String(event.organizer?.username || "") === String(currentUser.username || "")
+                      )
+                    );
 
-                    <button
-                      type="button"
-                      className="manage-event-button"
-                      onClick={() =>
-                        openManage(
-                          event
-                        )
-                      }
-                    >
-                      <Pencil
-                        size={16}
-                      />
-                      Manage
-                    </button>
+                    if (!isOwnerOrAdmin) {
+                      return (
+                        <div className="event-action">
+                          <span style={{ fontSize: '0.8rem', color: '#64748b', fontWeight: 500 }}>
+                            Organized by {event.organizer?.username || "Organizer"}
+                          </span>
+                        </div>
+                      );
+                    }
 
-                  </div>
+                    return (
+                      <div className="event-action" style={{ display: 'flex', gap: '8px' }}>
+                        <button
+                          type="button"
+                          className="manage-event-button"
+                          onClick={() => openManage(event)}
+                        >
+                          <Pencil size={16} />
+                          Manage
+                        </button>
+
+                        <button
+                          type="button"
+                          className="manage-event-button"
+                          style={{ backgroundColor: '#2563eb', color: '#ffffff', border: 'none' }}
+                          onClick={() => navigate(`/events/${event.id}/check-in`)}
+                        >
+                          <QrCode size={16} />
+                          Check-In
+                        </button>
+                      </div>
+                    );
+                  })()}
 
                 </div>
               );
@@ -1593,6 +1641,12 @@ function Events() {
                 </p>
               )}
 
+              {isOngoingEvent(selectedEvent) && (
+                <div style={{ background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', borderRadius: '10px', padding: '10px 14px', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', marginTop: '14px' }}>
+                  <AlertCircle size={16} /> Ongoing Event in Progress — Deletion and Cancellation are disabled.
+                </div>
+              )}
+
               {/* =========================
                   ACTION BUTTONS
               ========================== */}
@@ -1610,11 +1664,15 @@ function Events() {
                   }
                   disabled={
                     savingEdit ||
-                    deleting
+                    deleting ||
+                    isOngoingEvent(selectedEvent)
                   }
-                  style={
-                    deleteButtonStyle
-                  }
+                  title={isOngoingEvent(selectedEvent) ? "Ongoing events cannot be deleted" : ""}
+                  style={{
+                    ...deleteButtonStyle,
+                    opacity: isOngoingEvent(selectedEvent) ? 0.5 : 1,
+                    cursor: isOngoingEvent(selectedEvent) ? "not-allowed" : "pointer"
+                  }}
                 >
 
                   <Trash2

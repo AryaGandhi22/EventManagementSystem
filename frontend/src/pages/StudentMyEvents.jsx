@@ -9,6 +9,8 @@ import {
   Ban,
   Users,
   UserPlus,
+  Printer,
+  Ticket,
 } from "lucide-react";
 import { getRegistrations, cancelRegistration, toggleConnectOptIn, getEventAttendees } from "../api";
 import { QRCodeSVG } from "qrcode.react";
@@ -22,6 +24,8 @@ const StudentMyEvents = () => {
 
   const [cancelTarget, setCancelTarget] = useState(null);
   const [cancelling, setCancelling] = useState(false);
+
+  const [ticketModalTarget, setTicketModalTarget] = useState(null);
 
   const [message, setMessage] = useState("");
 
@@ -506,57 +510,77 @@ const StudentMyEvents = () => {
 
                   <div className="student-my-event-actions" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
 
-                    {status === "registered" && (
-                      <>
-                        <div className="student-qr-code-section" style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                          <QRCodeSVG 
-                            value={registration.id} 
-                            size={70} 
-                            level={"M"}
-                            includeMargin={false}
-                          />
-                          <div style={{ display: 'flex', flexDirection: 'column', gap: '8px' }}>
-                            <div>
-                              <span style={{ fontSize: '0.85rem', fontWeight: '500', color: 'var(--text)', display: 'block' }}>Check-in Pass</span>
-                              <span style={{ fontSize: '0.75rem', color: 'var(--text-light)' }}>Show this at the entrance</span>
-                            </div>
-                            
-                            <label className="networking-toggle" style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.8rem', color: 'var(--primary)' }}>
-                              <input 
-                                type="checkbox" 
-                                checked={registration.connect_opt_in} 
-                                onChange={(e) => handleToggleOptIn(registration, e)} 
-                                style={{ cursor: 'pointer' }}
-                              />
-                              Opt-in to Networking
-                            </label>
-                          </div>
-                        </div>
-                        <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                          {registration.connect_opt_in && (
-                            <button
-                              type="button"
-                              className="btn-secondary"
-                              onClick={(e) => viewAttendees(registration.event_details || { id: registration.event_id, title: registration.event }, e)}
-                              style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', padding: '6px 12px' }}
-                            >
-                              <Users size={14} /> Fellow Attendees
-                            </button>
-                          )}
-                          <button
-                            type="button"
-                            className="btn-danger-outline"
-                            onClick={() =>
-                              setCancelTarget(
-                                registration
-                              )
-                            }
+                    {status === "registered" && (() => {
+                      const now = new Date();
+                      const event = getEvent(registration);
+                      const startRaw = event.start_date || event.start_time || event.start || event.date;
+                      const startDate = startRaw ? new Date(startRaw) : null;
+                      // Hide cancel if: event has already started OR we are on the Completed tab
+                      const isEventPast = activeTab === "completed" || (startDate ? startDate < now : false);
+
+                      return (
+                        <>
+                          <div 
+                            className="student-qr-code-section" 
+                            onClick={() => setTicketModalTarget(registration)} 
+                            title="Click to view full ticket pass" 
+                            style={{ display: 'flex', alignItems: 'center', gap: '15px', cursor: 'pointer', background: '#f8fafc', padding: '10px 14px', borderRadius: '10px', border: '1px solid #e2e8f0' }}
                           >
-                            Cancel Registration
-                          </button>
-                        </div>
-                      </>
-                    )}
+                            <QRCodeSVG 
+                              value={registration.qr_token || registration.qr_code || registration.id} 
+                              size={65} 
+                              level={"M"}
+                              includeMargin={false}
+                            />
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                              <div>
+                                <span style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                  <Ticket size={15} style={{ color: '#2563eb' }} /> Check-in Pass
+                                </span>
+                                <span style={{ fontSize: '0.75rem', color: '#2563eb', fontWeight: '600', display: 'block', marginTop: '2px' }}>Click for Full Pass ➔</span>
+                              </div>
+                              
+                              {!isEventPast && (
+                                <label className="networking-toggle" onClick={(e) => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.8rem', color: 'var(--primary)' }}>
+                                  <input 
+                                    type="checkbox" 
+                                    checked={registration.connect_opt_in} 
+                                    onChange={(e) => handleToggleOptIn(registration, e)} 
+                                    style={{ cursor: 'pointer' }}
+                                  />
+                                  Opt-in to Networking
+                                </label>
+                              )}
+                            </div>
+                          </div>
+                          {!isEventPast && (
+                            <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
+                              {registration.connect_opt_in && (
+                                <button
+                                  type="button"
+                                  className="btn-secondary"
+                                  onClick={(e) => viewAttendees(registration.event_details || { id: registration.event_id, title: registration.event }, e)}
+                                  style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', padding: '6px 12px' }}
+                                >
+                                  <Users size={14} /> Fellow Attendees
+                                </button>
+                              )}
+                              <button
+                                type="button"
+                                className="btn-danger-outline"
+                                onClick={() =>
+                                  setCancelTarget(
+                                    registration
+                                  )
+                                }
+                              >
+                                Cancel Registration
+                              </button>
+                            </div>
+                          )}
+                        </>
+                      );
+                    })()}
 
                     {status === "waitlisted" && (
                       <button
@@ -739,6 +763,112 @@ const StudentMyEvents = () => {
           </div>
         </div>
       )}
+
+      {/* TICKET PASS MODAL */}
+      {ticketModalTarget && (() => {
+        const reg = ticketModalTarget;
+        const event = getEvent(reg);
+        const user = JSON.parse(localStorage.getItem("user") || "{}");
+        const studentName = reg.student_name || reg.student_details?.name || user.name || user.username || "Student";
+        const studentEmail = reg.student_email || reg.student_details?.email || user.email || "";
+        const studentRoll = reg.student_roll_number || user.roll_number || "STU-" + String(reg.id).slice(-4);
+        const qrValue = reg.qr_token || reg.qr_code || reg.id;
+        const isCheckedIn = reg.checked_in || reg.status === "checked-in";
+        const isCancelled = reg.status === "cancelled";
+
+        return (
+          <div className="modal-overlay" onClick={() => setTicketModalTarget(null)} style={{ zIndex: 1100 }}>
+            <div 
+              className="modal-container" 
+              onClick={(e) => e.stopPropagation()} 
+              style={{ maxWidth: '460px', width: '90%', padding: '0', overflow: 'hidden', borderRadius: '20px', border: '1px solid #e2e8f0', boxShadow: '0 25px 50px -12px rgba(0, 0, 0, 0.25)' }}
+            >
+              {/* Ticket Top Banner */}
+              <div style={{ background: 'linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%)', padding: '24px 20px', color: '#ffffff', position: 'relative' }}>
+                <button 
+                  type="button" 
+                  onClick={() => setTicketModalTarget(null)} 
+                  style={{ position: 'absolute', top: '16px', right: '16px', background: 'rgba(255,255,255,0.2)', border: 'none', color: '#ffffff', borderRadius: '50%', width: '32px', height: '32px', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                >
+                  <X size={18} />
+                </button>
+                
+                <div style={{ fontSize: '11px', fontWeight: '700', letterSpacing: '1px', textTransform: 'uppercase', background: 'rgba(255,255,255,0.2)', display: 'inline-block', padding: '3px 10px', borderRadius: '12px', marginBottom: '8px' }}>
+                  Official Event Pass
+                </div>
+                <h2 style={{ fontSize: '1.25rem', fontWeight: '700', margin: '0 0 4px 0', color: '#ffffff' }}>{getEventTitle(reg)}</h2>
+                <p style={{ fontSize: '0.85rem', opacity: 0.9, margin: 0 }}>{event.category || "Campus Event"}</p>
+              </div>
+
+              {/* Ticket Content */}
+              <div style={{ padding: '24px', background: '#ffffff' }}>
+                {/* Attendance Status Badge */}
+                <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '18px' }}>
+                  {isCheckedIn ? (
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#dcfce7', color: '#15803d', padding: '6px 16px', borderRadius: '20px', fontWeight: '700', fontSize: '0.85rem', border: '1px solid #bbf7d0' }}>
+                      <CheckCircle2 size={16} /> Checked-In {reg.checked_in_at ? `(${new Date(reg.checked_in_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })})` : ''}
+                    </div>
+                  ) : isCancelled ? (
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#fee2e2', color: '#b91c1c', padding: '6px 16px', borderRadius: '20px', fontWeight: '700', fontSize: '0.85rem', border: '1px solid #fecaca' }}>
+                      <Ban size={16} /> Cancelled
+                    </div>
+                  ) : (
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#eff6ff', color: '#1d4ed8', padding: '6px 16px', borderRadius: '20px', fontWeight: '700', fontSize: '0.85rem', border: '1px solid #bfdbfe' }}>
+                      <CheckCircle2 size={16} /> Registered / Valid Ticket
+                    </div>
+                  )}
+                </div>
+
+                {/* QR Code */}
+                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: '#f8fafc', padding: '18px', borderRadius: '16px', border: '2px dashed #cbd5e1', marginBottom: '20px' }}>
+                  <QRCodeSVG value={qrValue} size={180} level={"H"} includeMargin={true} />
+                  <span style={{ fontFamily: 'monospace', fontSize: '0.72rem', color: '#64748b', marginTop: '8px', wordBreak: 'break-all', textAlign: 'center' }}>
+                    {qrValue}
+                  </span>
+                </div>
+
+                {/* Pass Details */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '14px', fontSize: '0.85rem', borderTop: '1px solid #f1f5f9', paddingTop: '16px' }}>
+                  <div>
+                    <span style={{ color: '#94a3b8', fontSize: '0.7rem', display: 'block', textTransform: 'uppercase', fontWeight: '600' }}>Attendee Name</span>
+                    <strong style={{ color: '#1e293b' }}>{studentName}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: '#94a3b8', fontSize: '0.7rem', display: 'block', textTransform: 'uppercase', fontWeight: '600' }}>Roll No / Email</span>
+                    <strong style={{ color: '#1e293b', wordBreak: 'break-all' }}>{studentRoll || studentEmail}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: '#94a3b8', fontSize: '0.7rem', display: 'block', textTransform: 'uppercase', fontWeight: '600' }}>Date & Time</span>
+                    <strong style={{ color: '#1e293b' }}>{formatDate(reg)} • {formatTime(reg)}</strong>
+                  </div>
+                  <div>
+                    <span style={{ color: '#94a3b8', fontSize: '0.7rem', display: 'block', textTransform: 'uppercase', fontWeight: '600' }}>Venue</span>
+                    <strong style={{ color: '#1e293b' }}>{getLocation(reg)}</strong>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div style={{ display: 'flex', gap: '10px', marginTop: '20px' }}>
+                  <button
+                    type="button"
+                    onClick={() => window.print()}
+                    style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '11px', background: '#1e293b', color: '#ffffff', border: 'none', borderRadius: '10px', fontWeight: '600', cursor: 'pointer' }}
+                  >
+                    <Printer size={16} /> Print Ticket Pass
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setTicketModalTarget(null)}
+                    style={{ padding: '11px 18px', background: '#f1f5f9', color: '#475569', border: '1px solid #cbd5e1', borderRadius: '10px', fontWeight: '600', cursor: 'pointer' }}
+                  >
+                    Close
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
     </section>
   );
