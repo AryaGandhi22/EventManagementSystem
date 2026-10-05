@@ -117,12 +117,17 @@ class UserSummarySerializer(serializers.ModelSerializer):
     def get_registered_events(self, obj):
         res = []
         for r in obj.registrations.all():
-            res.append({
-                "id": str(r.event.id if hasattr(r.event, 'id') else r.event.pk),
-                "title": getattr(r.event, 'title', 'Untitled Event'),
-                "status": r.status,
-                "checked_in": r.checked_in,
-            })
+            try:
+                ev = r.event
+                if ev:
+                    res.append({
+                        "id": str(getattr(ev, 'id', ev.pk)),
+                        "title": getattr(ev, 'title', 'Untitled Event'),
+                        "status": r.status,
+                        "checked_in": r.checked_in,
+                    })
+            except Exception:
+                continue
         return res
 
     def get_events_attended(self, obj):
@@ -304,7 +309,7 @@ class EventSerializer(serializers.ModelSerializer):
                 venue=venue,
                 start_date__lt=end,
                 end_date__gt=start,
-            )
+            ).exclude(status="cancelled")
 
             if self.instance:
                 conflicts = conflicts.exclude(
@@ -312,10 +317,15 @@ class EventSerializer(serializers.ModelSerializer):
                 )
 
             if conflicts.exists():
+                conflict = conflicts.first()
+                start_str = conflict.start_date.strftime("%I:%M %p") if conflict.start_date else ""
+                end_str = conflict.end_date.strftime("%I:%M %p") if conflict.end_date else ""
+                date_str = conflict.start_date.strftime("%d %b %Y") if conflict.start_date else ""
+                time_range = f" on {date_str} from {start_str} to {end_str}" if start_str and end_str else ""
                 raise serializers.ValidationError(
                     {
                         "venue_id":
-                        "This venue is already booked during the selected time."
+                        f"This venue is already booked for '{conflict.title}'{time_range}. Please choose a different time or venue."
                     }
                 )
 
@@ -323,7 +333,7 @@ class EventSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     {
                         "venue_id":
-                        "Venue capacity is smaller than event capacity."
+                        f"Venue capacity ({venue.capacity}) is smaller than event capacity ({capacity})."
                     }
                 )
 
@@ -431,6 +441,11 @@ class RegistrationSerializer(serializers.ModelSerializer):
         if existing and existing.status != "cancelled":
             raise serializers.ValidationError(
                 "You are already registered for this event."
+            )
+
+        if event.status != "published":
+            raise serializers.ValidationError(
+                "Registration is not open for this event as it is not published yet."
             )
 
         if event.end_date <= timezone.now():
@@ -896,6 +911,7 @@ class UserRegistrationSerializer(serializers.ModelSerializer):
             user=user,
             phone=phone,
             interests=interests,
+            is_verified_organizer=False,
         )
 
         # Auto-assign to the matching group so login works immediately

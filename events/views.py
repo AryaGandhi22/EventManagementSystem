@@ -97,6 +97,21 @@ class EventListCreateView(generics.ListCreateAPIView):
                 )
             )
 
+        user = self.request.user
+        is_admin = user.is_staff or user.groups.filter(name__iexact="Admin").exists()
+        is_organizer = user.groups.filter(name__iexact="Organizer").exists()
+
+        if is_admin:
+            pass  # Admins see all events (draft, published, completed, cancelled)
+        elif is_organizer:
+            # Organizers see published/completed events and their own draft events
+            queryset = queryset.filter(
+                Q(status__in=["published", "completed"]) | Q(organizer=user)
+            )
+        else:
+            # Students / Participants only see published and completed events
+            queryset = queryset.filter(status__in=["published", "completed"])
+
         recommended = self.request.query_params.get("recommended")
         if recommended in {"1", "true", "yes"}:
             # Filter out events the user is already registered for
@@ -124,12 +139,9 @@ class EventListCreateView(generics.ListCreateAPIView):
             from rest_framework.exceptions import PermissionDenied
             raise PermissionDenied("Only organizers and admins can create events.")
 
-        if is_organizer and not is_admin:
-            if not getattr(user.profile, 'is_verified_organizer', False):
-                from rest_framework.exceptions import PermissionDenied
-                raise PermissionDenied("You must be a verified organizer to create events. Please await admin approval.")
-
-        serializer.save()
+        # If created by Admin, publish directly; if created by Organizer, set to draft (pending admin approval)
+        initial_status = "published" if is_admin else "draft"
+        serializer.save(organizer=user, status=initial_status)
 class EventDetailView(generics.RetrieveUpdateDestroyAPIView):
     serializer_class = EventSerializer
     permission_classes = [IsAuthenticated]

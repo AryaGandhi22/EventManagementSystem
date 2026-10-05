@@ -34,7 +34,13 @@ export function errorMessage(error) {
   if (typeof data === "string") return data;
   if (data && typeof data === "object") {
     return Object.entries(data)
-      .map(([key, value]) => `${key}: ${Array.isArray(value) ? value.join(", ") : value}`)
+      .map(([key, value]) => {
+        const val = Array.isArray(value) ? value.join(", ") : String(value);
+        if (["venue_id", "non_field_errors", "detail", "error"].includes(key)) {
+          return val;
+        }
+        return `${key.replace(/_/g, " ")}: ${val}`;
+      })
       .join(" | ");
   }
   return error?.message || "Something went wrong.";

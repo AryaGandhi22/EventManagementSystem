@@ -165,31 +165,35 @@ function Events() {
   ========================== */
 
   const filteredEvents = useMemo(() => {
-    /*
-     * All Events:
-     * show everything returned by backend.
-     */
     if (scope === "all") {
       return events;
     }
 
-    /*
-     * Upcoming Events:
-     * backend already filters these.
-     */
-    if (scope === "upcoming") {
-      return events;
+    if (scope === "pending") {
+      return events.filter((event) => event.status === "draft");
     }
 
-    /*
-     * Completed Events:
-     * filter locally using end_date.
-     */
+    if (scope === "published") {
+      return events.filter(
+        (event) =>
+          event.status === "published" &&
+          (!event.end_date || new Date(event.end_date) >= new Date())
+      );
+    }
+
+    if (scope === "upcoming") {
+      return events.filter(
+        (event) =>
+          event.status === "published" &&
+          (!event.start_date || new Date(event.start_date) >= new Date())
+      );
+    }
+
     if (scope === "completed") {
       return events.filter(
         (event) =>
-          event.end_date &&
-          new Date(event.end_date) < new Date()
+          event.status === "completed" ||
+          (event.end_date && new Date(event.end_date) < new Date())
       );
     }
 
@@ -286,16 +290,21 @@ function Events() {
       payload.append("start_date", new Date(form.start_date).toISOString());
       payload.append("end_date", new Date(form.end_date).toISOString());
       payload.append("capacity", Number(form.capacity));
+      if (form.venue_id) {
+        payload.append("venue_id", form.venue_id);
+      }
       if (form.image) {
         payload.append("image", form.image);
       }
 
-      await createEvent(payload);
+      const created = await createEvent(payload);
 
       setShowForm(false);
 
       setMessage(
-        "Event created successfully."
+        created?.status === "draft"
+          ? "Event submitted successfully! It is now pending admin approval."
+          : "Event created successfully."
       );
 
       await load();
@@ -634,6 +643,77 @@ function Events() {
         </p>
       )}
 
+      {/* STATUS TABS */}
+      <div style={{ display: "flex", gap: "10px", marginBottom: "16px", flexWrap: "wrap" }}>
+        {[
+          { key: "all", label: "All Events", count: events.length },
+          {
+            key: "pending",
+            label: "Pending Approval",
+            count: events.filter((e) => e.status === "draft").length,
+            highlight: events.filter((e) => e.status === "draft").length > 0,
+          },
+          {
+            key: "published",
+            label: "Published",
+            count: events.filter(
+              (e) => e.status === "published" && (!e.end_date || new Date(e.end_date) >= new Date())
+            ).length,
+          },
+          {
+            key: "completed",
+            label: "Closed",
+            count: events.filter(
+              (e) => e.status === "completed" || (e.end_date && new Date(e.end_date) < new Date())
+            ).length,
+          },
+        ].map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            onClick={() => setScope(tab.key)}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "8px 16px",
+              borderRadius: "8px",
+              border: scope === tab.key ? "1.5px solid #2563eb" : "1px solid #e2e8f0",
+              backgroundColor: scope === tab.key ? "#eff6ff" : "#ffffff",
+              color: scope === tab.key ? "#1d4ed8" : "#475569",
+              fontWeight: scope === tab.key ? 600 : 500,
+              fontSize: "13px",
+              cursor: "pointer",
+              transition: "all 0.15s ease",
+            }}
+          >
+            <span>{tab.label}</span>
+            <span
+              style={{
+                fontSize: "11px",
+                padding: "2px 7px",
+                borderRadius: "10px",
+                backgroundColor:
+                  tab.highlight && tab.key === "pending"
+                    ? "#fef3c7"
+                    : scope === tab.key
+                    ? "#dbeafe"
+                    : "#f1f5f9",
+                color:
+                  tab.highlight && tab.key === "pending"
+                    ? "#d97706"
+                    : scope === tab.key
+                    ? "#1d4ed8"
+                    : "#64748b",
+                fontWeight: 700,
+              }}
+            >
+              {tab.count}
+            </span>
+          </button>
+        ))}
+      </div>
+
       {/* FILTERS */}
 
       <div className="events-toolbar">
@@ -679,12 +759,20 @@ function Events() {
               All Events
             </option>
 
+            <option value="pending">
+              Pending Approval
+            </option>
+
+            <option value="published">
+              Published
+            </option>
+
             <option value="upcoming">
-              Upcoming Events
+              Upcoming
             </option>
 
             <option value="completed">
-              Completed
+              Closed / Completed
             </option>
 
           </select>
@@ -720,10 +808,28 @@ function Events() {
               const isPast = endDate ? endDate < now : false;
               const full = event.available_seats <= 0;
               const isCancelled = event.status === "cancelled";
+              const isDraft = event.status === "draft";
               const isClosed = event.status === "completed" || isPast;
 
-              const statusLabel = isCancelled ? "Cancelled" : isClosed ? "Closed" : full ? "Full" : "Open";
-              const statusClass = isCancelled ? "event-cancelled" : isClosed ? "event-closed" : full ? "event-full" : "event-open";
+              const statusLabel = isCancelled
+                ? "Cancelled"
+                : isDraft
+                ? "Pending Approval"
+                : isClosed
+                ? "Closed"
+                : full
+                ? "Full"
+                : "Open";
+
+              const statusClass = isCancelled
+                ? "event-cancelled"
+                : isDraft
+                ? "event-pending"
+                : isClosed
+                ? "event-closed"
+                : full
+                ? "event-full"
+                : "event-open";
 
               return (
 
@@ -1086,9 +1192,29 @@ function Events() {
                   />
                 </label>
 
-                <p className="venue-later-note">
-                  Venue can be assigned later from Manage.
-                </p>
+                <label
+                  style={fieldStyle}
+                >
+                  <span>
+                    Venue
+                  </span>
+
+                  <select
+                    name="venue_id"
+                    value={form.venue_id}
+                    onChange={handleChange}
+                    style={inputStyle}
+                  >
+                    <option value="">
+                      Venue TBA (Assign Later)
+                    </option>
+                    {venues.map((v) => (
+                      <option key={v.id} value={v.id}>
+                        {v.name} (Capacity: {v.capacity})
+                      </option>
+                    ))}
+                  </select>
+                </label>
 
               </div>
 

@@ -98,27 +98,42 @@ function AdminEvents() {
     });
   };
 
+  const [statusFilter, setStatusFilter] = useState("all");
+
+  const counts = {
+    all: events.length,
+    draft: events.filter((e) => e.status === "draft").length,
+    published: events.filter((e) => e.status === "published").length,
+    completed: events.filter((e) => e.status === "completed").length,
+    cancelled: events.filter((e) => e.status === "cancelled").length,
+  };
+
+  const filteredEvents = events.filter((e) => {
+    if (statusFilter === "all") return true;
+    return e.status === statusFilter;
+  });
+
   const getStatusIcon = (status) => {
-    if (status === "Completed") {
+    if (status === "completed") {
       return <CheckCircle2 size={14} />;
     }
-
-    if (status === "Ongoing") {
+    if (status === "draft") {
       return <Clock size={14} />;
     }
-
+    if (status === "published") {
+      return <CheckCircle2 size={14} />;
+    }
+    if (status === "cancelled") {
+      return <X size={14} />;
+    }
     return <Clock size={14} />;
   };
 
   const getStatusClass = (status) => {
-    if (status === "Completed") {
-      return "";
-    }
-
-    if (status === "Ongoing") {
-      return "warning";
-    }
-
+    if (status === "draft") return "warning";
+    if (status === "published") return "success";
+    if (status === "completed") return "completed";
+    if (status === "cancelled") return "danger";
     return "";
   };
 
@@ -161,9 +176,54 @@ function AdminEvents() {
           <h1>Event Management</h1>
 
           <p className="page-description">
-            Manage and monitor all events in the system.
+            Review pending event submissions, publish approved events, and monitor activity.
           </p>
         </div>
+      </div>
+
+      {/* Filter tabs */}
+      <div style={{ display: "flex", gap: "10px", marginBottom: "16px", flexWrap: "wrap" }}>
+        {[
+          { key: "all", label: "All Events", count: counts.all },
+          { key: "draft", label: "Pending Approval", count: counts.draft, highlight: counts.draft > 0 },
+          { key: "published", label: "Published", count: counts.published },
+          { key: "completed", label: "Completed", count: counts.completed },
+          { key: "cancelled", label: "Cancelled", count: counts.cancelled },
+        ].map((tab) => (
+          <button
+            key={tab.key}
+            type="button"
+            onClick={() => setStatusFilter(tab.key)}
+            style={{
+              display: "inline-flex",
+              alignItems: "center",
+              gap: "8px",
+              padding: "8px 16px",
+              borderRadius: "8px",
+              border: statusFilter === tab.key ? "1.5px solid #2563eb" : "1px solid #e2e8f0",
+              backgroundColor: statusFilter === tab.key ? "#eff6ff" : "#ffffff",
+              color: statusFilter === tab.key ? "#1d4ed8" : "#475569",
+              fontWeight: statusFilter === tab.key ? 600 : 500,
+              fontSize: "13px",
+              cursor: "pointer",
+              transition: "all 0.15s ease",
+            }}
+          >
+            <span>{tab.label}</span>
+            <span
+              style={{
+                fontSize: "11px",
+                padding: "2px 7px",
+                borderRadius: "10px",
+                backgroundColor: tab.highlight && tab.key === "draft" ? "#fef3c7" : statusFilter === tab.key ? "#dbeafe" : "#f1f5f9",
+                color: tab.highlight && tab.key === "draft" ? "#d97706" : statusFilter === tab.key ? "#1d4ed8" : "#64748b",
+                fontWeight: 700,
+              }}
+            >
+              {tab.count}
+            </span>
+          </button>
+        ))}
       </div>
 
       <div className="admin-user-toolbar">
@@ -172,7 +232,7 @@ function AdminEvents() {
 
           <input
             type="text"
-            placeholder="Search events..."
+            placeholder="Search events by title or category..."
             value={search}
             onChange={handleSearch}
           />
@@ -182,10 +242,22 @@ function AdminEvents() {
       <div className="admin-table-panel">
         <div className="admin-table-header">
           <div>
-            <h2>All Events</h2>
+            <h2>
+              {statusFilter === "draft"
+                ? "Pending Approval Events"
+                : statusFilter === "published"
+                ? "Published Events"
+                : statusFilter === "completed"
+                ? "Completed Events"
+                : statusFilter === "cancelled"
+                ? "Cancelled Events"
+                : "All Events"}
+            </h2>
 
             <p>
-              View event details, registrations and event status.
+              {statusFilter === "draft"
+                ? "Events submitted by organizers waiting for admin review and publishing."
+                : "View event details, registrations and event status."}
             </p>
           </div>
         </div>
@@ -210,12 +282,14 @@ function AdminEvents() {
             <div className="admin-users-empty">
               Loading events...
             </div>
-          ) : events.length === 0 ? (
+          ) : filteredEvents.length === 0 ? (
             <div className="admin-users-empty">
-              No events found.
+              {statusFilter === "draft"
+                ? "No pending events waiting for approval."
+                : "No events found."}
             </div>
           ) : (
-            events.map((event) => (
+            filteredEvents.map((event) => (
               <div
                 className="admin-events-row"
                 key={event.id || event.title}
@@ -250,19 +324,73 @@ function AdminEvents() {
                 </span>
 
                 <span
-                  className={`admin-event-status ${getStatusClass(
-                    event.status
-                  )}`}
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    gap: "5px",
+                    padding: "4px 10px",
+                    borderRadius: "12px",
+                    fontSize: "12px",
+                    fontWeight: 600,
+                    backgroundColor:
+                      event.status === "draft"
+                        ? "#fef3c7"
+                        : event.status === "published"
+                        ? "#dcfce7"
+                        : event.status === "completed"
+                        ? "#e0f2fe"
+                        : "#f3f4f6",
+                    color:
+                      event.status === "draft"
+                        ? "#d97706"
+                        : event.status === "published"
+                        ? "#16a34a"
+                        : event.status === "completed"
+                        ? "#0284c7"
+                        : "#64748b",
+                  }}
                 >
                   {getStatusIcon(event.status)}
-
-                  {event.status || "Upcoming"}
+                  {event.status === "draft"
+                    ? "Pending Approval"
+                    : event.status === "published"
+                    ? "Published"
+                    : event.status === "completed"
+                    ? "Completed"
+                    : event.status === "cancelled"
+                    ? "Cancelled"
+                    : event.status || "Upcoming"}
                 </span>
 
                 <div
                   className="admin-user-actions"
                   onClick={(e) => e.stopPropagation()}
+                  style={{ display: "flex", alignItems: "center", gap: "8px" }}
                 >
+                  {event.status === "draft" && (
+                    <button
+                      type="button"
+                      onClick={() => handleStatusChange(event.id, "published")}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        gap: "4px",
+                        padding: "5px 10px",
+                        borderRadius: "6px",
+                        backgroundColor: "#16a34a",
+                        color: "#ffffff",
+                        border: "none",
+                        fontSize: "12px",
+                        fontWeight: 600,
+                        cursor: "pointer",
+                      }}
+                      title="Approve and Publish this event"
+                    >
+                      <CheckCircle2 size={13} />
+                      <span>Approve</span>
+                    </button>
+                  )}
+
                   <div className="admin-user-menu-wrapper">
                     <button
                       type="button"
@@ -293,7 +421,7 @@ function AdminEvents() {
                             }
                           >
                             <CheckCircle2 size={16} />
-                            <span>Publish</span>
+                            <span>Approve &amp; Publish</span>
                           </button>
                         )}
                         {event.status !== "completed" && event.status !== "cancelled" && (
