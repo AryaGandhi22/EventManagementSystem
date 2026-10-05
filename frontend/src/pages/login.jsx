@@ -38,7 +38,12 @@ function saveSession(data, role) {
     ["current_user", data.user ? JSON.stringify(data.user) : null],
     ["user_role", role],
   ];
-  pairs.forEach(([k, v]) => v && localStorage.setItem(k, v));
+  pairs.forEach(([k, v]) => {
+    if (v) {
+      sessionStorage.setItem(k, v);
+      localStorage.setItem(k, v);
+    }
+  });
 }
 
 /* ─────────────────────────────────────────────────────────────── */

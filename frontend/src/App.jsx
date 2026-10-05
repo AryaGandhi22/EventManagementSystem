@@ -57,13 +57,33 @@ function ProtectedRoute({ children }) {
   return children;
 }
 
+function getUserDisplayName(user, fallbackRole) {
+  if (!user) return fallbackRole;
+  const fullName = `${user.first_name || ""} ${user.last_name || ""}`.trim();
+  if (fullName) return fullName;
+  if (user.name) return user.name;
+  if (user.username) return user.username;
+  return fallbackRole;
+}
+
+function getUserAvatarInitial(user, fallbackRole) {
+  const displayName = getUserDisplayName(user, fallbackRole);
+  return displayName ? displayName.charAt(0).toUpperCase() : fallbackRole.charAt(0).toUpperCase();
+}
+
 function App() {
   const location = useLocation();
 
   const isAdmin = location.pathname.startsWith("/admin");
   const isStudent = location.pathname.startsWith("/student");
 
-  const [currentUser, setCurrentUser] = useState(null);
+  const [currentUser, setCurrentUser] = useState(() => {
+    try {
+      return JSON.parse(sessionStorage.getItem("college_event_user") || "null");
+    } catch {
+      return null;
+    }
+  });
 
   useEffect(() => {
     // Only try to fetch the profile if they aren't on the login page
@@ -389,11 +409,11 @@ function App() {
                 <div className="sidebar-user-row">
                   <div className="profile-mini">
                     <div className="avatar">
-                      {isAdmin ? "A" : isStudent ? "S" : "O"}
+                      {getUserAvatarInitial(currentUser, isAdmin ? "Admin" : isStudent ? "Student" : "Organizer")}
                     </div>
                     <div className="profile-info">
                       <strong>
-                        {isAdmin ? "Admin" : isStudent ? "Student" : "Organizer"}
+                        {getUserDisplayName(currentUser, isAdmin ? "Admin" : isStudent ? "Student" : "Organizer")}
                       </strong>
                       <span>
                         {isAdmin ? "Administrator" : isStudent ? "Participant" : "Organizer"}
@@ -603,14 +623,14 @@ function App() {
 
                   <div className="topbar-profile">
                     <div className="avatar">
-                      {currentUser?.first_name ? currentUser.first_name[0].toUpperCase() : (isAdmin ? "A" : isStudent ? "S" : "O")}
+                      {getUserAvatarInitial(currentUser, isAdmin ? "Admin" : isStudent ? "Student" : "Organizer")}
                     </div>
                     <div>
                       <strong>
-                        {isAdmin ? "Admin" : isStudent ? "Student" : "Organizer"}
+                        {getUserDisplayName(currentUser, isAdmin ? "Admin" : isStudent ? "Student" : "Organizer")}
                       </strong>
                       <span>
-                        {isAdmin ? "Administrator" : isStudent ? "Student" : "Organizer"}
+                        {isAdmin ? "Administrator" : isStudent ? "Participant" : "Organizer"}
                       </span>
                     </div>
                   </div>

@@ -598,15 +598,14 @@ class ParticipantListView(
     def get_queryset(self):
         user = self.request.user
         
-        is_admin = (
+        is_staff_or_organizer = (
             user.is_staff
             or user.groups.filter(name__iexact="Admin").exists()
+            or user.groups.filter(name__iexact="Organizer").exists()
         )
-        
-        if is_admin:
-            queryset = User.objects.filter(
-                registrations__isnull=False
-            ).distinct().select_related("profile").prefetch_related("registrations")
+
+        if is_staff_or_organizer:
+            queryset = User.objects.exclude(is_superuser=True).distinct().select_related("profile").prefetch_related("registrations")
         else:
             queryset = User.objects.filter(
                 registrations__event__organizer=user
@@ -924,6 +923,7 @@ def dashboard_view(request):
         {
             "statistics": {
                 "total_users": total_users,
+                "total_participants": total_users,
                 "total_events": total_events,
                 "upcoming_events": upcoming_events_count,
                 "total_venues": total_venues,
@@ -1035,8 +1035,12 @@ def reports_view(request):
         user.is_staff
         or user.groups.filter(name__iexact="Admin").exists()
     )
+    is_organizer_or_admin = (
+        is_admin
+        or user.groups.filter(name__iexact="Organizer").exists()
+    )
 
-    if is_admin:
+    if is_organizer_or_admin:
         events = Event.objects.all()
         registrations = Registration.objects.all()
         feedbacks = Feedback.objects.all()

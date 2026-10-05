@@ -35,8 +35,8 @@ function Dashboard() {
 
       <div className="stats-grid">
         <div className="stat-card"><div className="stat-card-top"><div className="stat-icon blue"><CalendarDays size={22} /></div><span className="stat-change">Live</span></div><h3>{stats.total_events ?? 0}</h3><p>Total Events</p></div>
-        <div className="stat-card"><div className="stat-card-top"><div className="stat-icon green"><ClipboardList size={22} /></div><span className="stat-change">Live</span></div><h3>{String(stats.my_registrations ?? 0).padStart(2, "0")}</h3><p>My Registrations</p></div>
-        <div className="stat-card"><div className="stat-card-top"><div className="stat-icon purple"><Users size={22} /></div><span className="stat-change">Live</span></div><h3>{stats.total_participants ?? 0}</h3><p>Total Participants</p></div>
+        <div className="stat-card"><div className="stat-card-top"><div className="stat-icon green"><ClipboardList size={22} /></div><span className="stat-change">Live</span></div><h3>{String(stats.total_registrations ?? stats.my_registrations ?? 0).padStart(2, "0")}</h3><p>Total Registrations</p></div>
+        <div className="stat-card"><div className="stat-card-top"><div className="stat-icon purple"><Users size={22} /></div><span className="stat-change">Live</span></div><h3>{stats.total_participants ?? stats.total_users ?? 0}</h3><p>Total Participants</p></div>
         <div className="stat-card"><div className="stat-card-top"><div className="stat-icon orange"><MapPin size={22} /></div><span className="stat-change">Available</span></div><h3>{stats.active_venues ?? 0}</h3><p>Active Venues</p></div>
       </div>
 
@@ -67,9 +67,9 @@ function Dashboard() {
       <div className="dashboard-card quick-actions-card">
         <div className="card-heading"><div><h2>Quick Actions</h2><p>Access frequently used features</p></div></div>
         <div className="quick-actions">
-          <button type="button" onClick={() => navigate("/events")}><CalendarDays size={22} /><span>Browse Events</span></button>
-          <button type="button" onClick={() => navigate("/registrations")}><ClipboardList size={22} /><span>My Registrations</span></button>
+          <button type="button" onClick={() => navigate("/events")}><CalendarDays size={22} /><span>Manage Events</span></button>
           <button type="button" onClick={() => navigate("/participants")}><Users size={22} /><span>View Participants</span></button>
+          <button type="button" onClick={() => navigate("/venues")}><MapPin size={22} /><span>Manage Venues</span></button>
           <button type="button" onClick={() => navigate("/reports")}><BarChart3 size={22} /><span>View Reports</span></button>
         </div>
       </div>

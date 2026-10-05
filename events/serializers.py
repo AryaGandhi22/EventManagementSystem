@@ -80,6 +80,7 @@ class UserSummarySerializer(serializers.ModelSerializer):
     phone = serializers.SerializerMethodField()
     interests = serializers.SerializerMethodField()
     events_attended = serializers.SerializerMethodField()
+    registered_events = serializers.SerializerMethodField()
     last_activity = serializers.SerializerMethodField()
     status = serializers.SerializerMethodField()
 
@@ -92,6 +93,7 @@ class UserSummarySerializer(serializers.ModelSerializer):
             "email",
             "phone",
             "interests",
+            "registered_events",
             "events_attended",
             "last_activity",
             "status",
@@ -111,6 +113,17 @@ class UserSummarySerializer(serializers.ModelSerializer):
 
     def get_interests(self, obj):
         return self._profile(obj).interests
+
+    def get_registered_events(self, obj):
+        res = []
+        for r in obj.registrations.all():
+            res.append({
+                "id": str(r.event.id if hasattr(r.event, 'id') else r.event.pk),
+                "title": getattr(r.event, 'title', 'Untitled Event'),
+                "status": r.status,
+                "checked_in": r.checked_in,
+            })
+        return res
 
     def get_events_attended(self, obj):
         return sum(
