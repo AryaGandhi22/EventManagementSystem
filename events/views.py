@@ -109,12 +109,10 @@ class EventListCreateView(generics.ListCreateAPIView):
         elif is_admin:
             pass  # Admins see all events (draft, published, completed, cancelled)
         elif is_organizer:
-            # If requesting student browsing feed (upcoming or recommended), show published events
-            if self.request.query_params.get("upcoming") or self.request.query_params.get("recommended"):
-                queryset = queryset.filter(status__in=["published", "completed"])
-            else:
-                # In Organizer management workspace, show ONLY events created by this organizer
-                queryset = queryset.filter(organizer=user)
+            # Organizers see all published/completed campus events + their own draft events
+            queryset = queryset.filter(
+                Q(status__in=["published", "completed"]) | Q(organizer=user)
+            )
         else:
             # Students / Participants only see published and completed events
             queryset = queryset.filter(status__in=["published", "completed"])
@@ -1045,14 +1043,12 @@ class AdminEventListView(
         for event in events:
             registrations = sum(1 for r in event.registrations.all() if r.status == "registered")
 
-            if event.end_date < now:
-                event_status = "Completed"
-
-            elif event.start_date <= now:
-                event_status = "Ongoing"
-
+            if event.end_date and event.end_date < now:
+                time_status = "Completed"
+            elif event.start_date and event.start_date <= now:
+                time_status = "Ongoing"
             else:
-                event_status = "Upcoming"
+                time_status = "Upcoming"
 
             organizer_name = (
                 event.organizer
@@ -1065,13 +1061,15 @@ class AdminEventListView(
                 {
                     "id": str(event.pk),
                     "title": event.title,
+                    "description": event.description,
                     "category": event.category,
                     "organizer": organizer_name,
                     "start_date": event.start_date,
                     "end_date": event.end_date,
                     "registrations": registrations,
                     "capacity": event.capacity,
-                    "status": event_status,
+                    "status": event.status,
+                    "time_status": time_status,
                 }
             )
 
