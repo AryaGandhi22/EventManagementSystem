@@ -46,10 +46,17 @@ function Dashboard() {
           <div className="event-list">
             {upcoming.length === 0 ? <p className="page-description">No upcoming events.</p> : upcoming.slice(0, 5).map((event) => {
               const date = new Date(event.start_date);
+              const now = new Date();
+              const endDate = event.end_date ? new Date(event.end_date) : (event.start_date ? new Date(event.start_date) : null);
+              const isPast = endDate ? endDate < now : false;
+              const isClosed = event.status === "completed" || isPast;
+              const statusText = event.registration_status === "registered" ? "Registered" : event.registration_status === "waitlisted" ? "Waitlisted" : isClosed ? "Closed" : "Open";
+              const statusClass = event.registration_status ? "" : isClosed ? "closed" : "open";
+
               return <div className="event-item" key={event.id}>
                 <div className="event-date"><strong>{String(date.getDate()).padStart(2, "0")}</strong><span>{date.toLocaleString("en-IN", { month: "short" }).toUpperCase()}</span></div>
                 <div className="event-info"><h3>{event.title}</h3><p>{event.venue?.name || "Venue TBA"} • {formatTime(event.start_date)}</p></div>
-                <span className={`event-status ${event.registration_status ? "" : "open"}`}>{event.registration_status === "registered" ? "Registered" : event.registration_status === "waitlisted" ? "Waitlisted" : "Open"}</span>
+                <span className={`event-status ${statusClass}`}>{statusText}</span>
               </div>;
             })}
           </div>

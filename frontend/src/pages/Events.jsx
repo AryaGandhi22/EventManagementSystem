@@ -715,9 +715,15 @@ function Events() {
           filteredEvents.map(
             (event) => {
 
-              const full =
-                event.available_seats <=
-                0;
+              const now = new Date();
+              const endDate = event.end_date ? new Date(event.end_date) : (event.start_date ? new Date(event.start_date) : null);
+              const isPast = endDate ? endDate < now : false;
+              const full = event.available_seats <= 0;
+              const isCancelled = event.status === "cancelled";
+              const isClosed = event.status === "completed" || isPast;
+
+              const statusLabel = isCancelled ? "Cancelled" : isClosed ? "Closed" : full ? "Full" : "Open";
+              const statusClass = isCancelled ? "event-cancelled" : isClosed ? "event-closed" : full ? "event-full" : "event-open";
 
               return (
 
@@ -742,10 +748,8 @@ function Events() {
                       {event.category}
                     </span>
 
-                    <span className="event-open">
-                      {full
-                        ? "Full"
-                        : "Open"}
+                    <span className={statusClass}>
+                      {statusLabel}
                     </span>
 
                   </div>

@@ -362,6 +362,9 @@ class EventSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         data = super().to_representation(instance)
+        event_end = instance.end_date or instance.start_date
+        if event_end and event_end <= timezone.now() and data.get("status") == "published":
+            data["status"] = "completed"
         return stringify_object_ids(data)
 
 

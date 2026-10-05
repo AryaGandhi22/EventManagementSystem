@@ -266,7 +266,14 @@ const [registrationError, setRegistrationError] =
               </p>
             </div>
           ) : (
-            filteredEvents.map((event) => (
+            filteredEvents.map((event) => {
+              const now = new Date();
+              const endDate = event.end_date ? new Date(event.end_date) : (event.start_date ? new Date(event.start_date) : null);
+              const isPast = endDate ? endDate < now : false;
+              const isClosed = event.status === "completed" || isPast;
+              const isCancelled = event.status === "cancelled";
+
+              return (
               <div
                 className="student-event-card"
                 key={event.id}
@@ -285,7 +292,11 @@ const [registrationError, setRegistrationError] =
                   </span>
 
                   <span className="student-event-status">
-                    {event.is_recommended === 1 ? (
+                    {isCancelled ? (
+                      "Cancelled"
+                    ) : isClosed ? (
+                      "Closed"
+                    ) : event.is_recommended === 1 ? (
                       <>
                         <Sparkles size={11} style={{ marginRight: '4px', verticalAlign: 'middle', marginTop: '-2px' }} />
                         Top Match
@@ -355,7 +366,8 @@ const [registrationError, setRegistrationError] =
                 </button>
 
               </div>
-            ))
+            );
+            })
           )}
 
         </div>
@@ -477,6 +489,15 @@ const [registrationError, setRegistrationError] =
                   disabled
                 >
                   Waitlisted
+                </button>
+              ) : (selectedEvent.end_date ? new Date(selectedEvent.end_date) < new Date() : (selectedEvent.start_date ? new Date(selectedEvent.start_date) < new Date() : false)) || selectedEvent.status === "completed" || selectedEvent.status === "cancelled" ? (
+                <button
+                  type="button"
+                  className="primary-button"
+                  disabled
+                  style={{ opacity: 0.6, cursor: "not-allowed" }}
+                >
+                  Registration Closed
                 </button>
               ) : (
                 <button

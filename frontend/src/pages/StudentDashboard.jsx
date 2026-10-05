@@ -333,7 +333,11 @@ function StudentDashboard() {
 
 
                     <span className="student-event-status">
-                      {event.is_recommended === 1 ? (
+                      {(event.end_date ? new Date(event.end_date) < new Date() : (event.start_date ? new Date(event.start_date) < new Date() : false)) || event.status === "completed" ? (
+                        "Closed"
+                      ) : event.status === "cancelled" ? (
+                        "Cancelled"
+                      ) : event.is_recommended === 1 ? (
                         <>
                           <Sparkles size={11} style={{ marginRight: '4px' }} />
                           Top Match
