@@ -562,7 +562,31 @@ function AdminEvents() {
               </div>
             </div>
 
-            <div className="admin-modal-footer">
+            <div className="admin-modal-footer" style={{ display: "flex", gap: "10px", justifyContent: "flex-end" }}>
+              {selectedEvent.status === "draft" && (
+                <>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleStatusChange(selectedEvent.id, "published");
+                      closeModal();
+                    }}
+                    style={{ padding: "8px 16px", backgroundColor: "#16a34a", color: "#ffffff", border: "none", borderRadius: "6px", fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px" }}
+                  >
+                    <CheckCircle2 size={16} /> Approve &amp; Publish
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      handleStatusChange(selectedEvent.id, "cancelled");
+                      closeModal();
+                    }}
+                    style={{ padding: "8px 16px", backgroundColor: "#dc2626", color: "#ffffff", border: "none", borderRadius: "6px", fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px" }}
+                  >
+                    <X size={16} /> Reject Submission
+                  </button>
+                </>
+              )}
               <button
                 type="button"
                 onClick={closeModal}

@@ -132,17 +132,26 @@ const StudentMyEvents = () => {
     const now = new Date();
     return registrations.filter((registration) => {
       const status = getStatus(registration);
-      if (
-        registration.checked_in ||
-        ["checked-in", "no-show", "cancelled"].includes(status)
-      ) {
-        return false;
-      }
+      if (status === "cancelled") return false;
+
       const eventDate = getEventDate(registration);
-      if (eventDate && eventDate < now) {
-        return false;
+      const event = getEvent(registration);
+      const endDateRaw = event.end_date || event.end_time || event.end;
+      const endDate = endDateRaw ? new Date(endDateRaw) : eventDate;
+
+      // Any event scheduled for today or in the future is UPCOMING
+      if (endDate && endDate >= now) {
+        return true;
       }
-      return ["registered", "waitlisted"].includes(status);
+      if (eventDate && eventDate >= now) {
+        return true;
+      }
+
+      if (!eventDate && ["registered", "waitlisted"].includes(status)) {
+        return true;
+      }
+
+      return false;
     });
   }, [registrations]);
 
@@ -159,14 +168,17 @@ const StudentMyEvents = () => {
     return registrations.filter((registration) => {
       const status = getStatus(registration);
       if (status === "cancelled") return false;
-      if (
-        registration.checked_in ||
-        ["checked-in", "no-show"].includes(status)
-      ) {
-        return true;
-      }
+
       const eventDate = getEventDate(registration);
-      return eventDate && eventDate < now;
+      const event = getEvent(registration);
+      const endDateRaw = event.end_date || event.end_time || event.end;
+      const endDate = endDateRaw ? new Date(endDateRaw) : eventDate;
+
+      // An event is completed ONLY if its end date/start date has passed or status is completed
+      if (status === "completed") return true;
+      if (endDate && endDate < now) return true;
+
+      return false;
     });
   }, [registrations]);
 
@@ -510,37 +522,66 @@ const StudentMyEvents = () => {
 
                   <div className="student-my-event-actions" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
 
-                    {status === "registered" && (() => {
+                    {(() => {
                       const now = new Date();
                       const event = getEvent(registration);
                       const startRaw = event.start_date || event.start_time || event.start || event.date;
+                      const endRaw = event.end_date || event.end_time || event.end;
                       const startDate = startRaw ? new Date(startRaw) : null;
-                      // Hide cancel if: event has already started OR we are on the Completed tab
-                      const isEventPast = activeTab === "completed" || (startDate ? startDate < now : false);
+                      const endDate = endRaw ? new Date(endRaw) : startDate;
+                      const isEventPast = activeTab === "completed" || (endDate ? endDate < now : (startDate ? startDate < now : false)) || status === "completed";
+                      const isCheckedIn = registration.checked_in || status === "checked-in";
 
-                      return (
-                        <>
-                          <div 
-                            className="student-qr-code-section" 
-                            onClick={() => setTicketModalTarget(registration)} 
-                            title="Click to view full ticket pass" 
-                            style={{ display: 'flex', alignItems: 'center', gap: '15px', cursor: 'pointer', background: '#f8fafc', padding: '10px 14px', borderRadius: '10px', border: '1px solid #e2e8f0' }}
-                          >
-                            <QRCodeSVG 
-                              value={registration.qr_token || registration.qr_code || registration.id} 
-                              size={65} 
-                              level={"M"}
-                              includeMargin={false}
-                            />
-                            <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-                              <div>
-                                <span style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '5px' }}>
-                                  <Ticket size={15} style={{ color: '#2563eb' }} /> Check-in Pass
-                                </span>
-                                <span style={{ fontSize: '0.75rem', color: '#2563eb', fontWeight: '600', display: 'block', marginTop: '2px' }}>Click for Full Pass ➔</span>
+                      if (isEventPast) {
+                        return (
+                          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', width: '100%' }}>
+                            {isCheckedIn ? (
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: '#dcfce7', color: '#15803d', padding: '8px 18px', borderRadius: '12px', fontWeight: '700', fontSize: '0.85rem', border: '1px solid #bbf7d0' }}>
+                                <CheckCircle2 size={16} /> Attended / Checked-In
                               </div>
-                              
-                              {!isEventPast && (
+                            ) : (
+                              <div style={{ display: 'inline-flex', alignItems: 'center', gap: '8px', background: '#f1f5f9', color: '#64748b', padding: '8px 18px', borderRadius: '12px', fontWeight: '600', fontSize: '0.85rem', border: '1px solid #cbd5e1' }}>
+                                <Clock3 size={16} /> Event Closed / Pass Expired
+                              </div>
+                            )}
+
+                            {registration.connect_opt_in && (
+                              <button
+                                type="button"
+                                className="btn-secondary"
+                                onClick={(e) => viewAttendees(registration.event_details || { id: registration.event_id, title: registration.event }, e)}
+                                style={{ display: 'flex', alignItems: 'center', gap: '6px', fontSize: '0.8rem', padding: '8px 14px' }}
+                              >
+                                <Users size={14} /> View Attendees
+                              </button>
+                            )}
+                          </div>
+                        );
+                      }
+
+                      if (status === "registered") {
+                        return (
+                          <>
+                            <div 
+                              className="student-qr-code-section" 
+                              onClick={() => setTicketModalTarget(registration)} 
+                              title="Click to view full ticket pass" 
+                              style={{ display: 'flex', alignItems: 'center', gap: '15px', cursor: 'pointer', background: '#f8fafc', padding: '10px 14px', borderRadius: '10px', border: '1px solid #e2e8f0' }}
+                            >
+                              <QRCodeSVG 
+                                value={registration.qr_token || registration.qr_code || registration.id} 
+                                size={65} 
+                                level={"M"}
+                                includeMargin={false}
+                              />
+                              <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+                                <div>
+                                  <span style={{ fontSize: '0.85rem', fontWeight: '600', color: 'var(--text)', display: 'flex', alignItems: 'center', gap: '5px' }}>
+                                    <Ticket size={15} style={{ color: '#2563eb' }} /> Check-in Pass
+                                  </span>
+                                  <span style={{ fontSize: '0.75rem', color: '#2563eb', fontWeight: '600', display: 'block', marginTop: '2px' }}>Click for Full Pass ➔</span>
+                                </div>
+                                
                                 <label className="networking-toggle" onClick={(e) => e.stopPropagation()} style={{ display: 'flex', alignItems: 'center', gap: '8px', cursor: 'pointer', fontSize: '0.8rem', color: 'var(--primary)' }}>
                                   <input 
                                     type="checkbox" 
@@ -550,10 +591,8 @@ const StudentMyEvents = () => {
                                   />
                                   Opt-in to Networking
                                 </label>
-                              )}
+                              </div>
                             </div>
-                          </div>
-                          {!isEventPast && (
                             <div style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                               {registration.connect_opt_in && (
                                 <button
@@ -568,18 +607,16 @@ const StudentMyEvents = () => {
                               <button
                                 type="button"
                                 className="btn-danger-outline"
-                                onClick={() =>
-                                  setCancelTarget(
-                                    registration
-                                  )
-                                }
+                                onClick={() => setCancelTarget(registration)}
                               >
                                 Cancel Registration
                               </button>
                             </div>
-                          )}
-                        </>
-                      );
+                          </>
+                        );
+                      }
+
+                      return null;
                     })()}
 
                     {status === "waitlisted" && (
@@ -776,6 +813,12 @@ const StudentMyEvents = () => {
         const isCheckedIn = reg.checked_in || reg.status === "checked-in";
         const isCancelled = reg.status === "cancelled";
 
+        const now = new Date();
+        const eventDate = getEventDate(reg);
+        const endDateRaw = event.end_date || event.end_time || event.end;
+        const endDate = endDateRaw ? new Date(endDateRaw) : eventDate;
+        const isPastEvent = (endDate && endDate < now) || (eventDate && eventDate < now) || event.status === "completed";
+
         return (
           <div className="modal-overlay" onClick={() => setTicketModalTarget(null)} style={{ zIndex: 1100 }}>
             <div 
@@ -812,6 +855,10 @@ const StudentMyEvents = () => {
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#fee2e2', color: '#b91c1c', padding: '6px 16px', borderRadius: '20px', fontWeight: '700', fontSize: '0.85rem', border: '1px solid #fecaca' }}>
                       <Ban size={16} /> Cancelled
                     </div>
+                  ) : isPastEvent ? (
+                    <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#f1f5f9', color: '#64748b', padding: '6px 16px', borderRadius: '20px', fontWeight: '700', fontSize: '0.85rem', border: '1px solid #cbd5e1' }}>
+                      <Clock3 size={16} /> Event Ended / Expired Pass
+                    </div>
                   ) : (
                     <div style={{ display: 'inline-flex', alignItems: 'center', gap: '6px', background: '#eff6ff', color: '#1d4ed8', padding: '6px 16px', borderRadius: '20px', fontWeight: '700', fontSize: '0.85rem', border: '1px solid #bfdbfe' }}>
                       <CheckCircle2 size={16} /> Registered / Valid Ticket
@@ -820,8 +867,13 @@ const StudentMyEvents = () => {
                 </div>
 
                 {/* QR Code */}
-                <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', background: '#f8fafc', padding: '18px', borderRadius: '16px', border: '2px dashed #cbd5e1', marginBottom: '20px' }}>
+                <div style={{ position: 'relative', display: 'flex', flexDirection: 'column', alignItems: 'center', background: '#f8fafc', padding: '18px', borderRadius: '16px', border: '2px dashed #cbd5e1', marginBottom: '20px', opacity: isPastEvent && !isCheckedIn ? 0.6 : 1 }}>
                   <QRCodeSVG value={qrValue} size={180} level={"H"} includeMargin={true} />
+                  {isPastEvent && !isCheckedIn && (
+                    <div style={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%) rotate(-12deg)', background: '#dc2626', color: 'white', padding: '6px 16px', borderRadius: '8px', fontWeight: '800', fontSize: '0.85rem', letterSpacing: '1px', boxShadow: '0 4px 12px rgba(0,0,0,0.3)', pointerEvents: 'none' }}>
+                      PASS EXPIRED
+                    </div>
+                  )}
                   <span style={{ fontFamily: 'monospace', fontSize: '0.72rem', color: '#64748b', marginTop: '8px', wordBreak: 'break-all', textAlign: 'center' }}>
                     {qrValue}
                   </span>

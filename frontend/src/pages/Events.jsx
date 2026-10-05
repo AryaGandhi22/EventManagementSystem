@@ -11,6 +11,7 @@ import {
   Pencil,
   Trash2,
   QrCode,
+  User,
 } from "lucide-react";
 
 import {
@@ -84,12 +85,21 @@ function Events() {
     currentUser?.is_verified_organizer
   );
 
+  const isEventMine = (evt) => {
+    if (!currentUser) return false;
+    const orgId = String(evt.organizer?.id || evt.organizer_id || evt.organizer?.pk || "");
+    const userId = String(currentUser.id || currentUser.pk || "");
+    const orgUser = String(evt.organizer?.username || "");
+    const username = String(currentUser.username || "");
+    return (orgId && userId && orgId === userId) || (orgUser && username && orgUser === username);
+  };
+
   const [events, setEvents] = useState([]);
   const [venues, setVenues] = useState([]);
 
   const [category, setCategory] = useState("all");
 
-  const [scope, setScope] = useState("all");
+  const [scope, setScope] = useState(isOrganizer && !isAdmin ? "mine" : "all");
 
   const [loading, setLoading] = useState(true);
 
@@ -137,7 +147,7 @@ function Events() {
               ? "true"
               : undefined,
           mine:
-            isOrganizer && !isAdmin
+            scope === "mine"
               ? "true"
               : undefined,
         }),
@@ -174,15 +184,8 @@ function Events() {
   const filteredEvents = useMemo(() => {
     let list = events;
 
-    // For club organizers who are not admins, strictly show only events created by them
-    if (isOrganizer && !isAdmin && currentUser) {
-      list = list.filter((event) => {
-        const orgId = String(event.organizer?.id || event.organizer_id || event.organizer?.pk || "");
-        const userId = String(currentUser.id || currentUser.pk || "");
-        const orgUser = String(event.organizer?.username || "");
-        const username = String(currentUser.username || "");
-        return (orgId && userId && orgId === userId) || (orgUser && username && orgUser === username);
-      });
+    if (scope === "mine") {
+      return list.filter(isEventMine);
     }
 
     if (scope === "all") {
@@ -218,7 +221,7 @@ function Events() {
     }
 
     return list;
-  }, [events, scope, isOrganizer, isAdmin, currentUser]);
+  }, [events, scope, currentUser]);
 
   /* =========================
      HELPERS
@@ -408,6 +411,11 @@ function Events() {
     e.preventDefault();
 
     setEditError("");
+
+    if (isOngoingEvent(selectedEvent) && editForm.status === "cancelled") {
+      setEditError("Ongoing events cannot be cancelled while they are in progress.");
+      return;
+    }
 
     if (!editForm.title.trim()) {
       setEditError(
@@ -671,7 +679,8 @@ function Events() {
       {/* STATUS TABS */}
       <div style={{ display: "flex", gap: "10px", marginBottom: "16px", flexWrap: "wrap" }}>
         {[
-          { key: "all", label: "All Events", count: events.length },
+          ...(isOrganizer ? [{ key: "mine", label: "My Created Events", count: events.filter(isEventMine).length }] : []),
+          { key: "all", label: "All Campus Events", count: events.length },
           {
             key: "pending",
             label: "Pending Approval",
@@ -780,8 +789,14 @@ function Events() {
             }
           >
 
+            {isOrganizer && (
+              <option value="mine">
+                My Created Events
+              </option>
+            )}
+
             <option value="all">
-              All Events
+              All Campus Events
             </option>
 
             <option value="pending">
