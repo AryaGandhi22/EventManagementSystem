@@ -15,6 +15,7 @@ class Event(models.Model):
         ("Academic", "Academic"),
         ("Social", "Social"),
         ("Seminar", "Seminar"),
+        ("Archived", "Archived"),
     ]
 
     STATUS_CHOICES = [
@@ -22,6 +23,7 @@ class Event(models.Model):
         ("published", "Published"),
         ("cancelled", "Cancelled"),
         ("completed", "Completed"),
+        ("archived", "Archived"),
     ]
 
     title = models.CharField(max_length=200)
@@ -33,6 +35,9 @@ class Event(models.Model):
         default="published",
         db_index=True,
     )
+    is_deleted = models.BooleanField(default=False, db_index=True)
+    is_archived = models.BooleanField(default=False, db_index=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
     organizer = models.ForeignKey(
         User,
         on_delete=models.CASCADE,
@@ -107,6 +112,8 @@ class Registration(models.Model):
         choices=STATUS_CHOICES,
         default="registered",
     )
+    is_deleted = models.BooleanField(default=False, db_index=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
     checked_in = models.BooleanField(default=False)
     checked_in_at = models.DateTimeField(null=True, blank=True)
     checked_in_by = models.ForeignKey(
@@ -171,6 +178,8 @@ class Feedback(models.Model):
     rating_organization = models.PositiveIntegerField(null=True, blank=True)
     
     comment = models.TextField(blank=True, max_length=1000)
+    is_deleted = models.BooleanField(default=False, db_index=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -206,9 +215,13 @@ class PlatformFeedback(models.Model):
     )
     type = models.CharField(max_length=20, choices=TYPE_CHOICES, default="suggestion")
     status = models.CharField(max_length=20, choices=STATUS_CHOICES, default="new")
+    category = models.CharField(max_length=50, default="General", blank=True)
     title = models.CharField(max_length=200)
     description = models.TextField()
     screenshot = models.ImageField(upload_to="platform_feedback/", null=True, blank=True)
+    is_deleted = models.BooleanField(default=False, db_index=True)
+    is_archived = models.BooleanField(default=False, db_index=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     resolved_at = models.DateTimeField(null=True, blank=True)
     admin_notes = models.TextField(blank=True)
@@ -221,6 +234,7 @@ class PlatformFeedback(models.Model):
 
 class Venue(models.Model):
     name = models.CharField(max_length=200)
+    category = models.CharField(max_length=50, default="General", blank=True)
     description = models.TextField(blank=True)
     location = models.CharField(max_length=300)
     capacity = models.PositiveIntegerField()
@@ -231,6 +245,9 @@ class Venue(models.Model):
         null=True,
     )
     is_available = models.BooleanField(default=True)
+    is_deleted = models.BooleanField(default=False, db_index=True)
+    is_archived = models.BooleanField(default=False, db_index=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -251,6 +268,7 @@ class Notification(models.Model):
         related_name="notifications",
     )
     title = models.CharField(max_length=200)
+    category = models.CharField(max_length=50, default="General", blank=True)
     message = models.TextField()
     type = models.CharField(max_length=50, default="system")
     related_event = models.ForeignKey(
@@ -261,14 +279,19 @@ class Notification(models.Model):
         related_name="notifications",
     )
     is_read = models.BooleanField(default=False)
+    is_deleted = models.BooleanField(default=False, db_index=True)
+    is_archived = models.BooleanField(default=False, db_index=True)
+    deleted_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
         ordering = ["-created_at"]
         indexes = [
             models.Index(fields=["user", "is_read"], name="notif_user_read_idx"),
+            models.Index(fields=["user", "is_deleted"], name="notif_user_deleted_idx"),
             models.Index(fields=["created_at"], name="notif_created_at_idx"),
         ]
 
     def __str__(self):
         return f"{self.title} - {self.user.username}"
+

@@ -62,8 +62,18 @@ class EventListCreateView(generics.ListCreateAPIView):
 
         search = self.request.query_params.get("search")
         category = self.request.query_params.get("category")
+        status_param = self.request.query_params.get("status")
         upcoming = self.request.query_params.get("upcoming")
         venue = self.request.query_params.get("venue")
+        include_archived = self.request.query_params.get("include_archived") in {"1", "true", "yes"}
+
+        # Soft deletion / Archive filter
+        if category and category.lower() == "archived":
+            queryset = queryset.filter(Q(category__iexact="Archived") | Q(is_deleted=True) | Q(is_archived=True))
+        elif status_param and status_param.lower() == "archived":
+            queryset = queryset.filter(Q(status="archived") | Q(is_deleted=True) | Q(is_archived=True))
+        elif not include_archived:
+            queryset = queryset.filter(is_deleted=False)
 
         if search:
             queryset = queryset.filter(
@@ -71,9 +81,14 @@ class EventListCreateView(generics.ListCreateAPIView):
                 | Q(description__icontains=search)
             )
 
-        if category and category.lower() != "all":
+        if category and category.lower() not in {"all", "archived"}:
             queryset = queryset.filter(
                 category__iexact=category
+            )
+
+        if status_param and status_param.lower() != "archived":
+            queryset = queryset.filter(
+                status=status_param.lower()
             )
 
         if upcoming in {"1", "true", "yes"}:
@@ -107,7 +122,7 @@ class EventListCreateView(generics.ListCreateAPIView):
         if mine:
             queryset = queryset.filter(organizer=user)
         elif is_admin:
-            pass  # Admins see all events (draft, published, completed, cancelled)
+            pass  # Admins see all events (draft, published, completed, cancelled, archived)
         elif is_organizer:
             # Organizers see all published/completed campus events + their own draft events
             queryset = queryset.filter(
@@ -198,7 +213,14 @@ class EventDetailView(generics.RetrieveUpdateDestroyAPIView):
             from rest_framework.exceptions import ValidationError
             raise ValidationError({"detail": "Ongoing events cannot be deleted while they are in progress."})
 
-        instance.delete()
+        # Soft deletion: move to Archived category and status, mark timestamps
+        instance.is_deleted = True
+        instance.is_archived = True
+        instance.status = "archived"
+        instance.category = "Archived"
+        instance.deleted_at = now
+        instance.save(update_fields=["is_deleted", "is_archived", "status", "category", "deleted_at"])
+
 
 
 # ============================================================
@@ -685,7 +707,7 @@ class PlatformFeedbackListCreateView(generics.ListCreateAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        queryset = PlatformFeedback.objects.select_related("user")
+        queryset = PlatformFeedback.objects.select_related("user").filter(is_deleted=False)
         if self.request.user.is_staff:
             return queryset
         return queryset.filter(user=self.request.user)
@@ -700,6 +722,14 @@ class PlatformFeedbackDetailView(generics.RetrieveUpdateDestroyAPIView):
             return queryset
         return queryset.filter(user=self.request.user)
 
+    def perform_destroy(self, instance):
+        now = timezone.now()
+        instance.is_deleted = True
+        instance.is_archived = True
+        instance.category = "Archived"
+        instance.deleted_at = now
+        instance.save(update_fields=["is_deleted", "is_archived", "category", "deleted_at"])
+
 
 # ============================================================
 # VENUES
@@ -712,7 +742,15 @@ class VenueListCreateView(
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
-        queryset = Venue.objects.all()
+        category = self.request.query_params.get("category")
+        include_archived = self.request.query_params.get("include_archived") in {"1", "true", "yes"}
+
+        if category and category.lower() == "archived":
+            queryset = Venue.objects.filter(Q(category__iexact="Archived") | Q(is_deleted=True) | Q(is_archived=True))
+        elif not include_archived:
+            queryset = Venue.objects.filter(is_deleted=False)
+        else:
+            queryset = Venue.objects.all()
 
         search = self.request.query_params.get("search")
         availability = self.request.query_params.get(
@@ -724,6 +762,9 @@ class VenueListCreateView(
                 Q(name__icontains=search)
                 | Q(location__icontains=search)
             )
+
+        if category and category.lower() not in {"all", "archived"}:
+            queryset = queryset.filter(category__iexact=category)
 
         if availability == "available":
             queryset = queryset.filter(
@@ -744,6 +785,18 @@ class VenueDetailView(
     queryset = Venue.objects.all()
     serializer_class = VenueSerializer
     permission_classes = [IsAuthenticated]
+
+    def perform_destroy(self, instance):
+        if not is_admin_user(self.request.user):
+            self.permission_denied(self.request)
+        now = timezone.now()
+        instance.is_deleted = True
+        instance.is_archived = True
+        instance.category = "Archived"
+        instance.is_available = False
+        instance.deleted_at = now
+        instance.save(update_fields=["is_deleted", "is_archived", "category", "is_available", "deleted_at"])
+
 
 
 # ============================================================
@@ -1562,13 +1615,26 @@ class NotificationListView(generics.ListAPIView):
     permission_classes = [IsAuthenticated]
 
     def get_queryset(self):
+        category = self.request.query_params.get("category")
+        if category and category.lower() == "archived":
+            return Notification.objects.filter(
+                user=self.request.user
+            ).filter(Q(category__iexact="Archived") | Q(is_deleted=True) | Q(is_archived=True))
+
         return Notification.objects.filter(
-            user=self.request.user
+            user=self.request.user,
+            is_deleted=False,
         )
 
     def delete(self, request, *args, **kwargs):
-        """Clear all notifications for the user."""
-        Notification.objects.filter(user=request.user).delete()
+        """Soft delete / clear all notifications for the user."""
+        now = timezone.now()
+        Notification.objects.filter(user=request.user, is_deleted=False).update(
+            is_deleted=True,
+            is_archived=True,
+            category="Archived",
+            deleted_at=now,
+        )
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
@@ -1578,9 +1644,17 @@ class NotificationDetailView(generics.UpdateAPIView, generics.DestroyAPIView):
 
     def get_queryset(self):
         return Notification.objects.filter(
-            user=self.request.user
+            user=self.request.user,
         )
 
     def perform_update(self, serializer):
         # We only support marking as read
         serializer.save(is_read=True)
+
+    def perform_destroy(self, instance):
+        now = timezone.now()
+        instance.is_deleted = True
+        instance.is_archived = True
+        instance.category = "Archived"
+        instance.deleted_at = now
+        instance.save(update_fields=["is_deleted", "is_archived", "category", "deleted_at"])
