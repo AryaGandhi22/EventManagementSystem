@@ -160,16 +160,23 @@ class VenueSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "name",
+            "category",
             "description",
             "location",
             "capacity",
             "amenities",
             "image",
             "is_available",
+            "is_deleted",
+            "is_archived",
+            "deleted_at",
             "created_at",
         ]
         read_only_fields = [
             "id",
+            "is_deleted",
+            "is_archived",
+            "deleted_at",
             "created_at",
         ]
 
@@ -219,6 +226,9 @@ class EventSerializer(serializers.ModelSerializer):
             "description",
             "category",
             "status",
+            "is_deleted",
+            "is_archived",
+            "deleted_at",
             "organizer",
             "organizer_id",
             "venue",
@@ -236,6 +246,9 @@ class EventSerializer(serializers.ModelSerializer):
 
         read_only_fields = [
             "id",
+            "is_deleted",
+            "is_archived",
+            "deleted_at",
             "organizer",
             "organizer_id",
             "venue",
@@ -1014,18 +1027,26 @@ class NotificationSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "title",
+            "category",
             "message",
             "type",
             "related_event",
             "is_read",
+            "is_deleted",
+            "is_archived",
+            "deleted_at",
             "created_at",
         ]
         read_only_fields = [
             "id",
             "title",
+            "category",
             "message",
             "type",
             "related_event",
+            "is_deleted",
+            "is_archived",
+            "deleted_at",
             "created_at",
         ]
 
