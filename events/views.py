@@ -145,7 +145,7 @@ class EventDetailView(generics.RetrieveUpdateDestroyAPIView):
 
         if (
             event.organizer != self.request.user
-            and not self.request.user.is_staff
+            and not is_admin_user(self.request.user)
         ):
             self.permission_denied(self.request)
 
@@ -154,7 +154,7 @@ class EventDetailView(generics.RetrieveUpdateDestroyAPIView):
     def perform_destroy(self, instance):
         if (
             instance.organizer != self.request.user
-            and not self.request.user.is_staff
+            and not is_admin_user(self.request.user)
         ):
             self.permission_denied(self.request)
 

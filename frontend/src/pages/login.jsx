@@ -185,32 +185,11 @@ function Login() {
       });
 
 
-      // 2) Auto-login after registration
+      // Clear any session and switch to Sign In tab
       clearOldSession();
-      const data = await loginUser({
-        username: reg.username.trim(),
-        password: reg.password,
-      });
-
-      const actualRole = String(data?.role || "").toLowerCase();
-
-      // New accounts have no group yet — backend returns empty role.
-      // Show a success message and redirect to login so they pick their role.
-      if (!actualRole) {
-        setSuccess(
-          "Account created! Your account is pending role assignment by an admin. Please sign in once approved."
-        );
-        clearOldSession();
-        return;
-      }
-
-      saveSession(data, actualRole);
-
-      if (actualRole === "organizer") return navigate("/organizer", { replace: true });
-      if (actualRole === "student") return navigate("/student", { replace: true });
-
-      setSuccess("Account created! Please sign in.");
-      clearOldSession();
+      setSignIn((p) => ({ ...p, email: reg.username.trim() }));
+      setSelectedRole(reg.role);
+      setSuccess("Account created successfully! Please sign in with your credentials.");
       switchMode("signin");
     } catch (err) {
       const d = err?.data;

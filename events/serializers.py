@@ -911,10 +911,26 @@ class UserLoginSerializer(serializers.Serializer):
     )
 
     def validate(self, attrs):
+        username_input = attrs.get("username", "").strip()
+        password_input = attrs.get("password", "")
+
         user = authenticate(
-            username=attrs["username"],
-            password=attrs["password"],
+            username=username_input,
+            password=password_input,
         )
+
+        if not user:
+            from django.contrib.auth.models import User
+            from django.db.models import Q
+            matched_user = User.objects.filter(
+                Q(username__iexact=username_input) | Q(email__iexact=username_input)
+            ).first()
+
+            if matched_user:
+                user = authenticate(
+                    username=matched_user.username,
+                    password=password_input,
+                )
 
         if not user:
             raise serializers.ValidationError(
