@@ -51,6 +51,7 @@ def is_student_user(user):
 class EventListCreateView(generics.ListCreateAPIView):
     serializer_class = EventSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = None  # MongoDB does not support Django's paginator
 
     def get_queryset(self):
         queryset = Event.objects.select_related(
@@ -286,6 +287,7 @@ class AdminVerifyOrganizerView(APIView):
 class RegistrationListCreateView(generics.ListCreateAPIView):
     serializer_class = RegistrationSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = None
 
     def get_queryset(self):
         queryset = Registration.objects.select_related(
@@ -338,6 +340,7 @@ class RegistrationListCreateView(generics.ListCreateAPIView):
 class EventAttendeeListView(generics.ListAPIView):
     serializer_class = UserSummarySerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = None
 
     def get_queryset(self):
         event_id = self.kwargs.get("event_id")
@@ -705,6 +708,7 @@ class FeedbackDetailView(
 class PlatformFeedbackListCreateView(generics.ListCreateAPIView):
     serializer_class = PlatformFeedbackSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = None
 
     def get_queryset(self):
         queryset = PlatformFeedback.objects.select_related("user").filter(is_deleted=False)
@@ -740,6 +744,7 @@ class VenueListCreateView(
 ):
     serializer_class = VenueSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = None
 
     def get_queryset(self):
         category = self.request.query_params.get("category")
@@ -778,6 +783,13 @@ class VenueListCreateView(
 
         return queryset
 
+    def perform_create(self, serializer):
+        if not is_admin_user(self.request.user):
+            self.permission_denied(
+                self.request,
+                message="Only administrators can create venues."
+            )
+        serializer.save()
 
 class VenueDetailView(
     generics.RetrieveUpdateDestroyAPIView
@@ -786,17 +798,60 @@ class VenueDetailView(
     serializer_class = VenueSerializer
     permission_classes = [IsAuthenticated]
 
+    def perform_update(self, serializer):
+        if not is_admin_user(self.request.user):
+            self.permission_denied(
+                self.request,
+                message="Only administrators can update venues."
+            )
+        serializer.save()
+
     def perform_destroy(self, instance):
         if not is_admin_user(self.request.user):
             self.permission_denied(self.request)
+
         now = timezone.now()
+
+        # Block deletion if this venue is assigned to any upcoming or ongoing events
+        conflicting_events = Event.objects.filter(
+            venue=instance,
+            is_deleted=False,
+        ).filter(
+            # Upcoming: starts in future
+            # Ongoing: already started but not yet ended
+            end_date__gte=now,
+        ).exclude(status__in=["cancelled", "archived"])
+
+        if conflicting_events.exists():
+            from rest_framework.exceptions import ValidationError
+            event_list = ", ".join(
+                f'"{e.title}" ({e.status})'
+                for e in conflicting_events[:5]
+            )
+            raise ValidationError({
+                "detail": (
+                    f"Cannot archive this venue — it is assigned to upcoming or ongoing events: {event_list}. "
+                    f"Please change the venue for those events first, or wait for ongoing events to complete."
+                ),
+                "code": "venue_in_use",
+                "conflicting_events": [
+                    {
+                        "id": str(e.pk),
+                        "title": e.title,
+                        "status": e.status,
+                        "start_date": e.start_date,
+                        "end_date": e.end_date,
+                    }
+                    for e in conflicting_events[:10]
+                ],
+            })
+
         instance.is_deleted = True
         instance.is_archived = True
         instance.category = "Archived"
         instance.is_available = False
         instance.deleted_at = now
         instance.save(update_fields=["is_deleted", "is_archived", "category", "is_available", "deleted_at"])
-
 
 
 # ============================================================
@@ -902,6 +957,7 @@ class AdminUserListView(
     generics.ListAPIView
 ):
     permission_classes = [IsAuthenticated]
+    pagination_class = None
 
     def get(self, request, *args, **kwargs):
         is_admin = (
@@ -919,9 +975,7 @@ class AdminUserListView(
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        users = User.objects.all().prefetch_related(
-            "groups"
-        ).order_by(
+        users = User.objects.all().order_by(
             "username"
         )
 
@@ -941,25 +995,17 @@ class AdminUserListView(
         data = []
 
         for user in users:
-            groups = {
-                name.strip().lower()
-                for name in user.groups.values_list(
-                    "name",
-                    flat=True,
-                )
-            }
-
-            if user.is_staff or "admin" in groups:
-                role = "Admin"
-
-            elif "organizer" in groups:
-                role = "Organizer"
-
-            elif "student" in groups:
-                role = "Student"
-
-            else:
-                role = "User"
+            try:
+                if user.is_staff or user.is_superuser or user.groups.filter(name__iexact="Admin").exists():
+                    role = "Admin"
+                elif user.groups.filter(name__iexact="Organizer").exists():
+                    role = "Organizer"
+                elif user.groups.filter(name__iexact="Student").exists():
+                    role = "Student"
+                else:
+                    role = "User"
+            except Exception:
+                role = "Admin" if user.is_staff else "User"
 
             data.append(
                 {
@@ -1613,6 +1659,7 @@ def health_view(request):
 class NotificationListView(generics.ListAPIView):
     serializer_class = NotificationSerializer
     permission_classes = [IsAuthenticated]
+    pagination_class = None
 
     def get_queryset(self):
         category = self.request.query_params.get("category")

@@ -114,8 +114,9 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": (
         "rest_framework.permissions.IsAuthenticated",
     ),
-    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
-    "PAGE_SIZE": 50,
+    # NOTE: PageNumberPagination is NOT compatible with django-mongodb-backend
+    # (MongoDB does not support queryset.count() used internally by the paginator).
+    # Pagination is handled manually per-view where needed.
 }
 
 from datetime import timedelta
