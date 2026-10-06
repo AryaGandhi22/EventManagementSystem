@@ -9,6 +9,7 @@ import {
   MoreVertical,
   Eye,
   X,
+  XCircle,
 } from "lucide-react";
 
 import { api, updateEventStatus } from "../api";
@@ -368,27 +369,54 @@ function AdminEvents() {
                   style={{ display: "flex", alignItems: "center", gap: "8px" }}
                 >
                   {event.status === "draft" && (
-                    <button
-                      type="button"
-                      onClick={() => handleStatusChange(event.id, "published")}
-                      style={{
-                        display: "inline-flex",
-                        alignItems: "center",
-                        gap: "4px",
-                        padding: "5px 10px",
-                        borderRadius: "6px",
-                        backgroundColor: "#16a34a",
-                        color: "#ffffff",
-                        border: "none",
-                        fontSize: "12px",
-                        fontWeight: 600,
-                        cursor: "pointer",
-                      }}
-                      title="Approve and Publish this event"
-                    >
-                      <CheckCircle2 size={13} />
-                      <span>Approve</span>
-                    </button>
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleStatusChange(event.id, "published")}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px",
+                          padding: "5px 10px",
+                          borderRadius: "6px",
+                          backgroundColor: "#16a34a",
+                          color: "#ffffff",
+                          border: "none",
+                          fontSize: "12px",
+                          fontWeight: 600,
+                          cursor: "pointer",
+                        }}
+                        title="Approve and Publish this event"
+                      >
+                        <CheckCircle2 size={13} />
+                        <span>Approve</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (window.confirm(`Reject "${event.title}"? This will cancel the event and notify the organizer.`)) {
+                            handleStatusChange(event.id, "cancelled");
+                          }
+                        }}
+                        style={{
+                          display: "inline-flex",
+                          alignItems: "center",
+                          gap: "4px",
+                          padding: "5px 10px",
+                          borderRadius: "6px",
+                          backgroundColor: "#dc2626",
+                          color: "#ffffff",
+                          border: "none",
+                          fontSize: "12px",
+                          fontWeight: 600,
+                          cursor: "pointer",
+                        }}
+                        title="Reject this event submission"
+                      >
+                        <XCircle size={13} />
+                        <span>Reject</span>
+                      </button>
+                    </>
                   )}
 
                   <div className="admin-user-menu-wrapper">
@@ -578,12 +606,14 @@ function AdminEvents() {
                   <button
                     type="button"
                     onClick={() => {
-                      handleStatusChange(selectedEvent.id, "cancelled");
-                      closeModal();
+                      if (window.confirm(`Reject "${selectedEvent.title}"? This will cancel the event.`)) {
+                        handleStatusChange(selectedEvent.id, "cancelled");
+                        closeModal();
+                      }
                     }}
                     style={{ padding: "8px 16px", backgroundColor: "#dc2626", color: "#ffffff", border: "none", borderRadius: "6px", fontWeight: 600, cursor: "pointer", display: "inline-flex", alignItems: "center", gap: "6px" }}
                   >
-                    <X size={16} /> Reject Submission
+                    <XCircle size={16} /> Reject Submission
                   </button>
                 </>
               )}

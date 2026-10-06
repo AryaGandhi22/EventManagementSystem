@@ -236,6 +236,8 @@ class EventSerializer(serializers.ModelSerializer):
             "start_date",
             "end_date",
             "capacity",
+            "budget",
+            "views_count",
             "image",
             "is_recommended",
             "registration_count",
@@ -246,6 +248,7 @@ class EventSerializer(serializers.ModelSerializer):
 
         read_only_fields = [
             "id",
+            "views_count",
             "is_deleted",
             "is_archived",
             "deleted_at",
@@ -317,12 +320,19 @@ class EventSerializer(serializers.ModelSerializer):
             getattr(self.instance, "venue", None),
         )
 
-        if venue and start and end:
-            conflicts = Event.objects.filter(
-                venue=venue,
-                start_date__lt=end,
-                end_date__gt=start,
-            ).exclude(status="cancelled")
+        if start and end:
+            if venue:
+                conflicts = Event.objects.filter(
+                    venue=venue,
+                    start_date__lt=end,
+                    end_date__gt=start,
+                ).exclude(status="cancelled")
+            else:
+                conflicts = Event.objects.filter(
+                    venue__isnull=True,
+                    start_date__lt=end,
+                    end_date__gt=start,
+                ).exclude(status="cancelled")
 
             if self.instance:
                 conflicts = conflicts.exclude(
@@ -331,18 +341,21 @@ class EventSerializer(serializers.ModelSerializer):
 
             if conflicts.exists():
                 conflict = conflicts.first()
-                start_str = conflict.start_date.strftime("%I:%M %p") if conflict.start_date else ""
-                end_str = conflict.end_date.strftime("%I:%M %p") if conflict.end_date else ""
-                date_str = conflict.start_date.strftime("%d %b %Y") if conflict.start_date else ""
+                start_local = timezone.localtime(conflict.start_date) if conflict.start_date else None
+                end_local = timezone.localtime(conflict.end_date) if conflict.end_date else None
+                start_str = start_local.strftime("%I:%M %p") if start_local else ""
+                end_str = end_local.strftime("%I:%M %p") if end_local else ""
+                date_str = start_local.strftime("%d %b %Y") if start_local else ""
                 time_range = f" on {date_str} from {start_str} to {end_str}" if start_str and end_str else ""
+                venue_msg = f"This venue is already booked for '{conflict.title}'" if venue else f"Another event ('{conflict.title}') is already scheduled at this time"
                 raise serializers.ValidationError(
                     {
                         "venue_id":
-                        f"This venue is already booked for '{conflict.title}'{time_range}. Please choose a different time or venue."
+                        f"{venue_msg}{time_range}. Please choose a different time or venue."
                     }
                 )
 
-            if capacity is not None and venue.capacity < capacity:
+            if venue and capacity is not None and venue.capacity < capacity:
                 raise serializers.ValidationError(
                     {
                         "venue_id":
@@ -723,6 +736,8 @@ class FeedbackSerializer(serializers.ModelSerializer):
             "rating_value",
             "rating_organization",
             "comment",
+            "organizer_reply",
+            "replied_at",
             "created_at",
         ]
 
@@ -730,6 +745,7 @@ class FeedbackSerializer(serializers.ModelSerializer):
             "id",
             "user",
             "user_id",
+            "replied_at",
             "created_at",
         ]
 

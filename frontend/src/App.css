@@ -1193,7 +1193,7 @@ a {
 /* Dashboard - selected/active */
 .sidebar-nav .nav-item.active {
   color: #ffffff !important;
-  background: #2563eb !important;
+  background: #93a5cd !important;
   font-weight: 600;
   box-shadow: 0 4px 10px rgba(37, 99, 235, 0.20);
 }

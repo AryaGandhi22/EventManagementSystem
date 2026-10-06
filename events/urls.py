@@ -16,6 +16,7 @@ from .views import (
     EventAttendeeListView,
     FeedbackDetailView,
     FeedbackListCreateView,
+    OrganizerFeedbackReplyView,
     PlatformFeedbackListCreateView,
     PlatformFeedbackDetailView,
     AdminVerifyOrganizerView,
@@ -199,6 +200,12 @@ path(
         "feedback/<str:pk>/",
         FeedbackDetailView.as_view(),
         name="feedback-detail",
+    ),
+
+    path(
+        "feedback/<str:pk>/reply/",
+        OrganizerFeedbackReplyView.as_view(),
+        name="feedback-reply",
     ),
 
     path(

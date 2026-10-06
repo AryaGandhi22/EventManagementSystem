@@ -282,25 +282,7 @@ function AdminDashboard() {
             </div>
           </div>
 
-          <div className="admin-management-row">
-            <div className="admin-management-icon">
-              <Clock size={18} />
-            </div>
 
-            <div>
-              <strong>
-                {loading
-                  ? "..."
-                  : `${formatNumber(
-                      statistics.my_registrations
-                    )} My Registrations`}
-              </strong>
-
-              <span>
-                Registrations for current account
-              </span>
-            </div>
-          </div>
         </div>
 
       </div>

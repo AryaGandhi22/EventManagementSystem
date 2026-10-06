@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
 import { Plus, Search, MoreVertical, Users, UserCheck, CalendarCheck, UserPlus } from "lucide-react";
-import { getParticipants, registerUser } from "../api";
+import { getParticipants, registerUser, getStoredUser } from "../api";
 import { errorMessage, formatDate, initials } from "../utils";
 
 function Participants() {
@@ -9,6 +9,11 @@ function Participants() {
   const [status, setStatus] = useState("all");
   const [error, setError] = useState("");
   const [message, setMessage] = useState("");
+
+  const currentUser = getStoredUser();
+  const isAdmin = currentUser?.is_staff || currentUser?.groups?.some?.(g =>
+    typeof g === "string" ? g.toLowerCase() === "admin" : g?.name?.toLowerCase() === "admin"
+  );
 
   const load = async () => {
     try { setParticipants(await getParticipants()); setError(""); }
@@ -40,7 +45,11 @@ function Participants() {
 
   return (
     <section className="page-content">
-      <div className="page-heading"><div><p className="welcome-text">College Events</p><h1>Participants</h1><p className="page-description">Manage participant profiles, interests, and event activity.</p></div><button className="primary-button" type="button" onClick={addParticipant}><Plus size={17} /> Add Participant</button></div>
+      <div className="page-heading"><div><p className="welcome-text">College Events</p><h1>Participants</h1><p className="page-description">Manage participant profiles, interests, and event activity.</p></div>
+        {isAdmin && (
+          <button className="primary-button" type="button" onClick={addParticipant}><Plus size={17} /> Add Participant</button>
+        )}
+      </div>
       {message && <p className="page-description">{message}</p>}{error && <p className="page-description">{error}</p>}
 
       <div className="participant-stats">

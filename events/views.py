@@ -1,6 +1,6 @@
 from django.contrib.auth.models import User
 from django.db import transaction
-from django.db.models import Avg, Count, Q, Case, When, Value, IntegerField
+from django.db.models import Avg, Count, Q, Case, When, Value, IntegerField, F
 from django.utils import timezone
 
 from rest_framework import generics, permissions, status
@@ -173,6 +173,13 @@ class EventDetailView(generics.RetrieveUpdateDestroyAPIView):
             "venue",
         ).all()
 
+    def retrieve(self, request, *args, **kwargs):
+        instance = self.get_object()
+        Event.objects.filter(pk=instance.pk).update(views_count=F("views_count") + 1)
+        instance.views_count += 1
+        serializer = self.get_serializer(instance)
+        return Response(serializer.data)
+
     def perform_update(self, serializer):
         event = self.get_object()
 
@@ -192,7 +199,15 @@ class EventDetailView(generics.RetrieveUpdateDestroyAPIView):
         new_status = serializer.validated_data.get("status")
         if is_ongoing and new_status == "cancelled":
             from rest_framework.exceptions import ValidationError
-            raise ValidationError({"detail": "Ongoing events cannot be cancelled while they are in progress."})
+            registered_count = event.registrations.filter(status="registered").count()
+            if registered_count > 0:
+                raise ValidationError({
+                    "detail": (
+                        f"Ongoing events cannot be cancelled while students are registered. "
+                        f"{registered_count} student(s) are currently registered. "
+                        "Cancel all registrations first."
+                    )
+                })
 
         serializer.save()
 
@@ -703,6 +718,30 @@ class FeedbackDetailView(
         return queryset.filter(
             user=self.request.user
         )
+
+
+class OrganizerFeedbackReplyView(APIView):
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, pk):
+        try:
+            feedback = Feedback.objects.get(pk=pk, is_deleted=False)
+        except Feedback.DoesNotExist:
+            return Response({"detail": "Feedback not found."}, status=status.HTTP_404_NOT_FOUND)
+
+        if not (request.user.is_staff or feedback.event.organizer == request.user):
+            return Response({"detail": "Only event organizers can reply to feedback."}, status=status.HTTP_403_FORBIDDEN)
+
+        reply = request.data.get("organizer_reply", "").strip()
+        if not reply:
+            return Response({"detail": "Reply text is required."}, status=status.HTTP_400_BAD_REQUEST)
+
+        feedback.organizer_reply = reply
+        feedback.replied_at = timezone.now()
+        feedback.save()
+
+        serializer = FeedbackSerializer(feedback)
+        return Response(serializer.data, status=status.HTTP_200_OK)
 
 
 class PlatformFeedbackListCreateView(generics.ListCreateAPIView):
@@ -1415,6 +1454,8 @@ def reports_view(request):
                 "event_id": str(event.pk),
                 "event": event.title,
                 "category": event.category,
+                "budget": float(event.budget or 0),
+                "views": event.views_count or 0,
                 "registrations": reg_count,
                 "attendance": attendance,
                 "no_shows": no_show,
@@ -1574,10 +1615,18 @@ def admin_event_status_view(request, pk):
         and event.start_date <= now <= event.end_date
     )
     if is_ongoing and new_status == "cancelled":
-        return Response(
-            {"detail": "Ongoing events cannot be cancelled while they are in progress."},
-            status=status.HTTP_400_BAD_REQUEST,
-        )
+        registered_count = event.registrations.filter(status="registered").count()
+        if registered_count > 0:
+            return Response(
+                {
+                    "detail": (
+                        f"Ongoing events cannot be cancelled while students are registered. "
+                        f"{registered_count} student(s) are currently registered. "
+                        "Cancel all registrations first."
+                    )
+                },
+                status=status.HTTP_400_BAD_REQUEST,
+            )
 
     event.status = new_status
     event.save(update_fields=["status"])

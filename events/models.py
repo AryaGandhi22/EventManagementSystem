@@ -58,6 +58,13 @@ class Event(models.Model):
     start_date = models.DateTimeField()
     end_date = models.DateTimeField()
     capacity = models.PositiveIntegerField()
+    budget = models.DecimalField(
+        max_digits=10,
+        decimal_places=2,
+        default=0.00,
+        blank=True,
+    )
+    views_count = models.PositiveIntegerField(default=0)
     created_at = models.DateTimeField(auto_now_add=True)
 
     class Meta:
@@ -178,6 +185,8 @@ class Feedback(models.Model):
     rating_organization = models.PositiveIntegerField(null=True, blank=True)
     
     comment = models.TextField(blank=True, max_length=1000)
+    organizer_reply = models.TextField(blank=True)
+    replied_at = models.DateTimeField(null=True, blank=True)
     is_deleted = models.BooleanField(default=False, db_index=True)
     deleted_at = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)

@@ -12,6 +12,8 @@ import {
   Trash2,
   QrCode,
   User,
+  AlertCircle,
+  AlarmClock,
 } from "lucide-react";
 
 import {
@@ -46,6 +48,7 @@ const emptyForm = {
   start_date: "",
   end_date: "",
   capacity: "100",
+  budget: "0",
   venue_id: "",
 };
 
@@ -313,6 +316,7 @@ function Events() {
       payload.append("start_date", new Date(form.start_date).toISOString());
       payload.append("end_date", new Date(form.end_date).toISOString());
       payload.append("capacity", Number(form.capacity));
+      payload.append("budget", Number(form.budget || 0));
       if (form.venue_id) {
         payload.append("venue_id", form.venue_id);
       }
@@ -375,6 +379,11 @@ function Events() {
           event.capacity ?? 100
         ),
 
+      budget:
+        String(
+          event.budget ?? 0
+        ),
+
       venue_id:
         String(
           event.venue?.id ??
@@ -413,8 +422,13 @@ function Events() {
     setEditError("");
 
     if (isOngoingEvent(selectedEvent) && editForm.status === "cancelled") {
-      setEditError("Ongoing events cannot be cancelled while they are in progress.");
-      return;
+      const regCount = selectedEvent.registration_count ?? 0;
+      if (regCount > 0) {
+        setEditError(
+          `Ongoing events cannot be cancelled while students are registered. ${regCount} student(s) are currently registered. Cancel all registrations first.`
+        );
+        return;
+      }
     }
 
     if (!editForm.title.trim()) {
@@ -466,6 +480,7 @@ function Events() {
       payload.append("start_date", new Date(editForm.start_date).toISOString());
       payload.append("end_date", new Date(editForm.end_date).toISOString());
       payload.append("capacity", Number(editForm.capacity));
+      payload.append("budget", Number(editForm.budget || 0));
       if (editForm.venue_id) {
         payload.append("venue_id", editForm.venue_id);
       }
@@ -991,15 +1006,36 @@ function Events() {
                           Manage
                         </button>
 
-                        <button
-                          type="button"
-                          className="manage-event-button"
-                          style={{ backgroundColor: '#2563eb', color: '#ffffff', border: 'none' }}
-                          onClick={() => navigate(`/events/${event.id}/check-in`)}
-                        >
-                          <QrCode size={16} />
-                          Check-In
-                        </button>
+                        {(() => {
+                          const isCompleted =
+                            event.status === "completed" ||
+                            event.status === "cancelled" ||
+                            (event.end_date && new Date(event.end_date) < new Date());
+
+                          return isCompleted ? (
+                            <button
+                              type="button"
+                              className="manage-event-button"
+                              style={{ backgroundColor: '#7c3aed', color: '#ffffff', border: 'none' }}
+                              onClick={() => navigate(`/events/${event.id}/check-in`)}
+                              title="View attendance list (read-only)"
+                            >
+                              <Users size={16} />
+                              Attendance
+                            </button>
+                          ) : (
+                            <button
+                              type="button"
+                              className="manage-event-button"
+                              style={{ backgroundColor: '#2563eb', color: '#ffffff', border: 'none' }}
+                              onClick={() => navigate(`/events/${event.id}/check-in`)}
+                              title="Scan QR codes and mark attendance"
+                            >
+                              <QrCode size={16} />
+                              Check-In
+                            </button>
+                          );
+                        })()}
                       </div>
                     );
                   })()}
@@ -1207,30 +1243,41 @@ function Events() {
 
                 </div>
 
-                <label
-                  style={fieldStyle}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: 12,
+                  }}
                 >
-                  <span>
-                    Capacity *
-                  </span>
+                  <label style={fieldStyle}>
+                    <span>Capacity *</span>
+                    <input
+                      type="number"
+                      name="capacity"
+                      value={form.capacity}
+                      onChange={handleChange}
+                      min="1"
+                      step="1"
+                      required
+                      style={inputStyle}
+                    />
+                  </label>
 
-                  <input
-                    type="number"
-                    name="capacity"
-                    value={
-                      form.capacity
-                    }
-                    onChange={
-                      handleChange
-                    }
-                    min="1"
-                    step="1"
-                    required
-                    style={
-                      inputStyle
-                    }
-                  />
-                </label>
+                  <label style={fieldStyle}>
+                    <span>Budget (₹)</span>
+                    <input
+                      type="number"
+                      name="budget"
+                      value={form.budget}
+                      onChange={handleChange}
+                      min="0"
+                      step="100"
+                      placeholder="e.g. 5000"
+                      style={inputStyle}
+                    />
+                  </label>
+                </div>
 
                 <label
                   style={fieldStyle}
@@ -1532,30 +1579,41 @@ function Events() {
 
                 </div>
 
-                <label
-                  style={fieldStyle}
+                <div
+                  style={{
+                    display: "grid",
+                    gridTemplateColumns: "1fr 1fr",
+                    gap: 12,
+                  }}
                 >
-                  <span>
-                    Capacity *
-                  </span>
+                  <label style={fieldStyle}>
+                    <span>Capacity *</span>
+                    <input
+                      type="number"
+                      name="capacity"
+                      value={editForm.capacity}
+                      onChange={handleEditChange}
+                      min="1"
+                      step="1"
+                      required
+                      style={inputStyle}
+                    />
+                  </label>
 
-                  <input
-                    type="number"
-                    name="capacity"
-                    value={
-                      editForm.capacity
-                    }
-                    onChange={
-                      handleEditChange
-                    }
-                    min="1"
-                    step="1"
-                    required
-                    style={
-                      inputStyle
-                    }
-                  />
-                </label>
+                  <label style={fieldStyle}>
+                    <span>Budget (₹)</span>
+                    <input
+                      type="number"
+                      name="budget"
+                      value={editForm.budget}
+                      onChange={handleEditChange}
+                      min="0"
+                      step="100"
+                      placeholder="e.g. 5000"
+                      style={inputStyle}
+                    />
+                  </label>
+                </div>
 
                 <label
                   style={fieldStyle}
@@ -1630,19 +1688,19 @@ function Events() {
                   />
                 </label>
 
-                <div className="manage-event-summary">
+                <div className="manage-event-summary" style={{ display: "flex", gap: 16, flexWrap: "wrap", justifyContent: "space-between" }}>
+                  <div>
+                    <strong>Registrations:</strong>{" "}
+                    {selectedEvent.registration_count ?? 0} / {selectedEvent.capacity}
+                  </div>
 
-                  <strong>
-                    Current registrations:
-                  </strong>{" "}
+                  <div>
+                    <strong>Budget:</strong> ₹{Number(selectedEvent.budget || 0).toLocaleString()}
+                  </div>
 
-                  {selectedEvent.registration_count ??
-                    0}
-
-                  {" / "}
-
-                  {selectedEvent.capacity}
-
+                  <div>
+                    <strong>Views:</strong> {selectedEvent.views_count ?? 0}
+                  </div>
                 </div>
 
               </div>
@@ -1656,11 +1714,22 @@ function Events() {
                 </p>
               )}
 
-              {isOngoingEvent(selectedEvent) && (
-                <div style={{ background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', borderRadius: '10px', padding: '10px 14px', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', marginTop: '14px' }}>
-                  <AlertCircle size={16} /> Ongoing Event in Progress — Deletion and Cancellation are disabled.
-                </div>
-              )}
+              {isOngoingEvent(selectedEvent) && (() => {
+                const regCount = selectedEvent.registration_count ?? 0;
+                if (regCount > 0) {
+                  return (
+                    <div style={{ background: '#fef3c7', color: '#92400e', border: '1px solid #fde68a', borderRadius: '10px', padding: '10px 14px', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', marginTop: '14px' }}>
+                      <AlarmClock size={16} /> Ongoing Event — Cancellation is blocked because <strong>&nbsp;{regCount} student(s)&nbsp;</strong> are currently registered. Cancel all registrations first.
+                    </div>
+                  );
+                } else {
+                  return (
+                    <div style={{ background: '#dcfce7', color: '#166534', border: '1px solid #bbf7d0', borderRadius: '10px', padding: '10px 14px', fontSize: '0.85rem', fontWeight: 600, display: 'flex', alignItems: 'center', gap: '8px', marginTop: '14px' }}>
+                      <AlertCircle size={16} /> Ongoing Event — No students registered. You may cancel this event.
+                    </div>
+                  );
+                }
+              })()}
 
               {/* =========================
                   ACTION BUTTONS

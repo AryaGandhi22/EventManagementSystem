@@ -348,6 +348,13 @@ export async function getDashboard() {
   return api("/dashboard/");
 }
 
+export async function replyToFeedback(id, replyText) {
+  return api(`/feedback/${id}/reply/`, {
+    method: "POST",
+    body: JSON.stringify({ organizer_reply: replyText }),
+  });
+}
+
 export async function getReports() {
   return api("/reports/");
 }
